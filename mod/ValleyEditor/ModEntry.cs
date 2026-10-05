@@ -33,8 +33,10 @@ internal sealed class ModEntry : Mod
         this.config = helper.ReadConfig<ModConfig>();
 
         var router = new Router();
+        var harmony = new Harmony(this.ModManifest.UniqueID);
         var rules = new RulesService(helper);
-        MinePatches.Apply(new Harmony(this.ModManifest.UniqueID), this.Monitor);
+        MinePatches.Apply(harmony, this.Monitor);
+        var cheats = new CheatsService(helper, this.state, harmony, this.Monitor);
 
         var sprites = new ItemSprites(this.dispatcher);
         var items = new ItemsDomain(this.dispatcher, this.state, helper.ModRegistry, sprites);
@@ -48,7 +50,7 @@ internal sealed class ModEntry : Mod
             new ProgressionDomain(this.dispatcher, this.state),
             new QuestsDomain(this.dispatcher, this.state),
             new NpcsDomain(this.dispatcher, this.state, sprites),
-            new RulesDomain(this.dispatcher, this.state, rules),
+            new RulesDomain(this.dispatcher, this.state, rules, cheats),
         };
         foreach (Domain domain in domains)
             domain.Register(router);
@@ -65,7 +67,11 @@ internal sealed class ModEntry : Mod
             this.server = null;
         }
 
-        helper.Events.GameLoop.UpdateTicked += (_, _) => this.dispatcher.Drain();
+        helper.Events.GameLoop.UpdateTicked += (_, _) =>
+        {
+            this.state.Tick++;
+            this.dispatcher.Drain();
+        };
         helper.Events.GameLoop.Saved += (_, _) => this.state.UnsavedChanges = false;
         helper.Events.GameLoop.ReturnedToTitle += (_, _) => this.state.UnsavedChanges = false;
         helper.Events.GameLoop.SaveLoaded += (_, _) =>

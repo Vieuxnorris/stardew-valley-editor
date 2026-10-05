@@ -32,6 +32,7 @@ export function RulesTab({ onChanged }: Props) {
         </div>
         <FeedbackLine feedback={feedback} />
       </section>
+      <OpCard {...shared} />
       <CropsCard {...shared} />
       <TreesCard {...shared} />
       <MinesCard {...shared} />
@@ -222,7 +223,88 @@ function MinesCard({ snapshot, setSnapshot, onChanged }: CardProps) {
           </button>
         </div>
       </form>
+      <RuleSwitch rules={snapshot.rules} field="mineAlwaysLadder" label={t('rules.mineAlwaysLadder')} busy={busy} save={(body) => run(() => patchRules(body), setSnapshot)} />
       <p class="muted">{t('rules.minesHint')}</p>
+      <FeedbackLine feedback={feedback} />
+    </section>
+  );
+}
+
+type BoolRule = { [K in keyof Rules]: Rules[K] extends boolean ? K : never }[keyof Rules];
+
+/** A rule checkbox that applies as soon as it's clicked. */
+function RuleSwitch({ rules, field, label, busy, save }: { rules: Rules; field: BoolRule; label: string; busy: boolean; save: (body: object) => void }) {
+  return (
+    <label class="check">
+      <input type="checkbox" checked={rules[field]} disabled={busy} onChange={(e) => save({ [field]: (e.target as HTMLInputElement).checked })} /> {label}
+    </label>
+  );
+}
+
+function OpCard({ snapshot, setSnapshot, onChanged }: CardProps) {
+  const { t } = useI18n();
+  const { run, feedback, busy } = useAction(onChanged);
+  const save = (body: object) => run(() => patchRules(body), setSnapshot);
+  const { values, set, body } = useRuleFields(snapshot.rules, ['pickupMultiplier', 'monsterLootRolls', 'sellPrice', 'speedBonus', 'magnetRadiusBonus', 'luckBonus']);
+  const rules = snapshot.rules;
+  const toggle = (field: BoolRule) => <RuleSwitch rules={rules} field={field} label={t(`op.${field}`)} busy={busy} save={save} />;
+
+  return (
+    <section class="card op-card">
+      <h3>⚡ {t('op.title')}</h3>
+      <p class="muted">{t('op.intro')}</p>
+
+      <div class="op-grid">
+        <fieldset>
+          <legend>{t('op.fishing')}</legend>
+          {toggle('instantFishing')}
+          {toggle('perfectCatch')}
+          {toggle('alwaysTreasure')}
+        </fieldset>
+        <fieldset>
+          <legend>{t('op.player')}</legend>
+          {toggle('infiniteHealth')}
+          {toggle('infiniteStamina')}
+          {toggle('freezeTime')}
+          {toggle('maxDailyLuck')}
+        </fieldset>
+      </div>
+
+      <form
+        class="stack"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save(body());
+        }}
+      >
+        <fieldset>
+          <legend>{t('op.loot')}</legend>
+          <div class="fields">
+            <RatioField label={t('op.pickupMultiplier')} value={values.pickupMultiplier} onInput={set('pickupMultiplier')} min={1} max={100} step={1} />
+            <label>
+              {t('op.minQuality')}
+              <select value={rules.minQuality} disabled={busy} onChange={(e) => save({ minQuality: Number((e.target as HTMLSelectElement).value) })}>
+                {[0, 1, 2, 4].map((q) => (
+                  <option key={q} value={q}>
+                    {t(`quality.${q}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <RatioField label={t('op.monsterLootRolls')} value={values.monsterLootRolls} onInput={set('monsterLootRolls')} min={1} max={20} step={1} />
+            <RatioField label={t('op.sellPrice')} value={values.sellPrice} onInput={set('sellPrice')} min={0.01} max={100} step={0.5} />
+          </div>
+          <p class="muted">{t('op.pickupHint')}</p>
+        </fieldset>
+        <div class="fields">
+          <RatioField label={t('op.speedBonus')} value={values.speedBonus} onInput={set('speedBonus')} min={0} max={20} step={1} vanilla={0} />
+          <RatioField label={t('op.magnetRadiusBonus')} value={values.magnetRadiusBonus} onInput={set('magnetRadiusBonus')} min={0} max={2000} step={64} vanilla={0} />
+          <RatioField label={t('op.luckBonus')} value={values.luckBonus} onInput={set('luckBonus')} min={0} max={20} step={1} vanilla={0} />
+          <button type="submit" disabled={busy}>
+            {t('common.apply')}
+          </button>
+        </div>
+      </form>
       <FeedbackLine feedback={feedback} />
     </section>
   );

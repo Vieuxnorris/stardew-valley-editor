@@ -52,6 +52,9 @@ internal static class MinePatches
         {
             if (__instance.mineLevel == QuarryMineLevel)
                 return;
+            if (RulesService.Current.MineAlwaysLadder)
+                AddLadder(__instance);
+
             double multiplier = RulesService.Current.OreMultiplier(__instance.mineLevel);
             if (Math.Abs(multiplier - 1) < 1e-9)
                 return;
@@ -79,6 +82,24 @@ internal static class MinePatches
         catch (Exception ex)
         {
             monitor?.Log($"Failed applying the mine ore rule on level {__instance.mineLevel}: {ex}", LogLevel.Error);
+        }
+    }
+
+    /// <summary>Put a ladder down on a free tile, unless the level has one or can't have one (elevator floors, monster-gated levels).</summary>
+    private static void AddLadder(MineShaft mine)
+    {
+        if (mine.ladderHasSpawned || mine.mineLevel % 5 == 0 || mine.mustKillAllMonstersToAdvance())
+            return;
+
+        var size = mine.Map.Layers[0].LayerSize;
+        for (int attempt = 0; attempt < 200; attempt++)
+        {
+            int x = mine.mineRandom.Next(size.Width), y = mine.mineRandom.Next(size.Height);
+            if (mine.isTileClearForMineObjects(x, y))
+            {
+                mine.createLadderDown(x, y);
+                return;
+            }
         }
     }
 

@@ -509,3 +509,14 @@ fieldset {
 .card h4 {
   margin: 16px 0 8px;
 }
+
+.op-card {
+  border-color: var(--accent);
+}
+
+.op-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}

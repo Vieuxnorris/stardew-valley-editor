@@ -193,6 +193,21 @@ export interface Rules {
   mineStones: number;
   mineMonsters: number;
   mineGems: number;
+  mineAlwaysLadder: boolean;
+  instantFishing: boolean;
+  perfectCatch: boolean;
+  alwaysTreasure: boolean;
+  pickupMultiplier: number;
+  minQuality: number;
+  monsterLootRolls: number;
+  sellPrice: number;
+  infiniteHealth: boolean;
+  infiniteStamina: boolean;
+  freezeTime: boolean;
+  maxDailyLuck: boolean;
+  speedBonus: number;
+  magnetRadiusBonus: number;
+  luckBonus: number;
 }
 
 export interface CropRule {

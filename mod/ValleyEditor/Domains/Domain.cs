@@ -11,6 +11,12 @@ internal sealed class EditorState
 {
     /// <summary>Whether the editor changed the game since it last saved (changes only persist when the game saves overnight).</summary>
     public bool UnsavedChanges { get; set; }
+
+    /// <summary>Game ticks counted by the mod (incremented on UpdateTicked).</summary>
+    public int Tick { get; set; }
+
+    /// <summary>The tick of the editor's last change, so rules reacting to inventory changes can ignore the editor's own.</summary>
+    public int LastWriteTick { get; set; } = int.MinValue / 2;
 }
 
 /// <summary>A group of API routes for one area of the game (player, inventory, NPCs...).</summary>
@@ -41,6 +47,7 @@ internal abstract class Domain
         RequireWorld();
         object? result = write();
         this.State.UnsavedChanges = true;
+        this.State.LastWriteTick = this.State.Tick;
         return result;
     });
 

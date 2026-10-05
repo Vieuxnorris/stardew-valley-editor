@@ -32,6 +32,55 @@ internal sealed class RulesData
     /// <summary>Multiplier on gem nodes in the mines.</summary>
     public double MineGems { get; set; } = 1;
 
+    /// <summary>Whether every mine level gets a ladder down as soon as it's generated.</summary>
+    public bool MineAlwaysLadder { get; set; }
+
+    // fishing
+
+    /// <summary>Fish bite right away, are hooked automatically and the minigame is won at once.</summary>
+    public bool InstantFishing { get; set; }
+
+    /// <summary>Every catch counts as perfect.</summary>
+    public bool PerfectCatch { get; set; }
+
+    /// <summary>Every catch comes with a treasure chest.</summary>
+    public bool AlwaysTreasure { get; set; }
+
+    // loot
+
+    /// <summary>Items picked up in the world (harvest, forage, fish, monster drops) are multiplied by this.</summary>
+    public int PickupMultiplier { get; set; } = 1;
+
+    /// <summary>Minimum quality (0, 1, 2 or 4) of crops, fish, animal products and artisan goods picked up.</summary>
+    public int MinQuality { get; set; }
+
+    /// <summary>How many times a slain monster rolls its drops (vanilla 1).</summary>
+    public int MonsterLootRolls { get; set; } = 1;
+
+    /// <summary>Sell price multiplier for shops and the shipping bin.</summary>
+    public double SellPrice { get; set; } = 1;
+
+    // player
+
+    public bool InfiniteHealth { get; set; }
+
+    public bool InfiniteStamina { get; set; }
+
+    /// <summary>The clock doesn't move.</summary>
+    public bool FreezeTime { get; set; }
+
+    /// <summary>Every day is the luckiest possible day.</summary>
+    public bool MaxDailyLuck { get; set; }
+
+    /// <summary>Extra walking speed (a permanent buff; vanilla coffee is +1).</summary>
+    public int SpeedBonus { get; set; }
+
+    /// <summary>Extra item pickup radius in pixels (a permanent buff; vanilla radius is 128).</summary>
+    public int MagnetRadiusBonus { get; set; }
+
+    /// <summary>Extra luck level (a permanent buff).</summary>
+    public int LuckBonus { get; set; }
+
     /// <summary>The mine bands, by the ore they hold.</summary>
     public static readonly string[] MineBands = { "copper", "iron", "gold", "iridium" };
 

@@ -12,11 +12,36 @@ namespace ValleyEditor.Domains;
 internal sealed class RulesDomain : Domain
 {
     private readonly RulesService rules;
+    private readonly CheatsService cheats;
 
-    public RulesDomain(GameThreadDispatcher game, EditorState state, RulesService rules)
+    /// <summary>On/off rules, by JSON field name.</summary>
+    private static readonly (string Name, Action<RulesData, bool> Set)[] Switches =
+    {
+        ("mineAlwaysLadder", (r, v) => r.MineAlwaysLadder = v),
+        ("instantFishing", (r, v) => r.InstantFishing = v),
+        ("perfectCatch", (r, v) => r.PerfectCatch = v),
+        ("alwaysTreasure", (r, v) => r.AlwaysTreasure = v),
+        ("infiniteHealth", (r, v) => r.InfiniteHealth = v),
+        ("infiniteStamina", (r, v) => r.InfiniteStamina = v),
+        ("freezeTime", (r, v) => r.FreezeTime = v),
+        ("maxDailyLuck", (r, v) => r.MaxDailyLuck = v),
+    };
+
+    /// <summary>Whole-number rules, by JSON field name, with their allowed range.</summary>
+    private static readonly (string Name, int Min, int Max, Action<RulesData, int> Set)[] Counts =
+    {
+        ("pickupMultiplier", 1, 100, (r, v) => r.PickupMultiplier = v),
+        ("monsterLootRolls", 1, 20, (r, v) => r.MonsterLootRolls = v),
+        ("speedBonus", 0, 20, (r, v) => r.SpeedBonus = v),
+        ("magnetRadiusBonus", 0, 2000, (r, v) => r.MagnetRadiusBonus = v),
+        ("luckBonus", 0, 20, (r, v) => r.LuckBonus = v),
+    };
+
+    public RulesDomain(GameThreadDispatcher game, EditorState state, RulesService rules, CheatsService cheats)
         : base(game, state)
     {
         this.rules = rules;
+        this.cheats = cheats;
     }
 
     public override void Register(Router router)
@@ -34,6 +59,28 @@ internal sealed class RulesDomain : Domain
             double? mineStones = OptDouble(body, "mineStones", 0, 5);
             double? mineMonsters = OptDouble(body, "mineMonsters", 0, 10);
             double? mineGems = OptDouble(body, "mineGems", 0, 20);
+            double? sellPrice = OptDouble(body, "sellPrice", 0.01, 100);
+            int? minQuality = OptInt(body, "minQuality", 0, 4);
+            if (minQuality == 3)
+                throw new ApiException(400, "'minQuality' must be 0, 1, 2 or 4.");
+
+            var switches = new List<(Action<RulesData, bool> Set, bool Value)>();
+            foreach (var (name, set) in Switches)
+            {
+                JToken? token = body[name];
+                if (token is null || token.Type == JTokenType.Null)
+                    continue;
+                if (token.Type != JTokenType.Boolean)
+                    throw new ApiException(400, $"'{name}' must be true or false.");
+                switches.Add((set, token.Value<bool>()));
+            }
+
+            var counts = new List<(Action<RulesData, int> Set, int Value)>();
+            foreach (var (name, min, max, set) in Counts)
+            {
+                if (OptInt(body, name, min, max) is int value)
+                    counts.Add((set, value));
+            }
 
             var mineOre = new Dictionary<string, double>();
             if (body["mineOre"] is JObject ore)
@@ -64,6 +111,12 @@ internal sealed class RulesDomain : Domain
                     r.MineStones = mineStones ?? r.MineStones;
                     r.MineMonsters = mineMonsters ?? r.MineMonsters;
                     r.MineGems = mineGems ?? r.MineGems;
+                    r.SellPrice = sellPrice ?? r.SellPrice;
+                    r.MinQuality = minQuality ?? r.MinQuality;
+                    foreach (var (set, value) in switches)
+                        set(r, value);
+                    foreach (var (set, value) in counts)
+                        set(r, value);
                     foreach (var (band, value) in mineOre)
                         r.MineOre[band] = value;
                     foreach (var (seedId, value) in cropOverrides)
@@ -74,6 +127,7 @@ internal sealed class RulesDomain : Domain
                             r.CropGrowthOverrides.Remove(seedId);
                     }
                 });
+                this.cheats.ApplyDailyEffects();
                 return this.Snapshot();
             });
         });
@@ -81,6 +135,7 @@ internal sealed class RulesDomain : Domain
         router.Post("/api/rules/reset", _ => this.Write(() =>
         {
             this.rules.Replace(new RulesData());
+            this.cheats.ApplyDailyEffects();
             return this.Snapshot();
         }));
 
