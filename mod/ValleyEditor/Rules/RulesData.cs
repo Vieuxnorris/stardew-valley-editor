@@ -65,6 +65,9 @@ internal sealed class RulesData
     /// <summary>Per-machine time multipliers, by qualified machine ID (e.g. "(BC)12" for the keg); 0 means instant.</summary>
     public Dictionary<string, double> MachineTimeOverrides { get; set; } = new();
 
+    /// <summary>Output forced on every new batch of a machine type, by qualified machine ID (single machines keep theirs in modData).</summary>
+    public Dictionary<string, OutputOverride> MachineOutputRules { get; set; } = new();
+
     /// <summary>Per-species farm animal settings, by Data/FarmAnimals key (e.g. "White Chicken").</summary>
     public Dictionary<string, AnimalRule> AnimalRules { get; set; } = new();
 
@@ -173,6 +176,12 @@ internal sealed class RulesData
     /// <summary>Crafting and cooking need no ingredients.</summary>
     public bool FreeCrafting { get; set; }
 
+    /// <summary>Place items, open chests, harvest and talk at any distance (the cursor's tile, not the one in front of you).</summary>
+    public bool InfiniteReach { get; set; }
+
+    /// <summary>Place objects on any free tile (water, cliffs, paths, town...), as long as nothing is already there.</summary>
+    public bool PlaceAnywhere { get; set; }
+
     /// <summary>The mine bands, by the ore they hold.</summary>
     public static readonly string[] MineBands = { "copper", "iron", "gold", "iridium" };
 
@@ -199,4 +208,16 @@ internal sealed class AnimalRule
 
     /// <summary>Always give the deluxe produce (large eggs, large milk...) when the species has one.</summary>
     public bool AlwaysDeluxe { get; set; }
+}
+
+/// <summary>What a machine produces on each new batch; null fields keep the game's value.</summary>
+internal sealed class OutputOverride
+{
+    /// <summary>The qualified item ID to produce instead of the recipe's output.</summary>
+    public string? ItemId { get; set; }
+
+    public int? Stack { get; set; }
+
+    /// <summary>0, 1, 2 or 4.</summary>
+    public int? Quality { get; set; }
 }

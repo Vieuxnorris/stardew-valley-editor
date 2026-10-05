@@ -33,21 +33,28 @@ internal static class RequestContext
 }
 
 /// <summary>
-/// Lets a change register how to revert itself. Call <see cref="Remember"/> on the game thread, before changing anything,
-/// inside a domain write; the first call wins so it captures the state from before the whole request.
+/// Lets a change register how to revert itself. Call <see cref="Remember"/> on the game thread, before changing each
+/// piece of state, inside a domain write. Undo replays the captures in reverse order, so state touched twice ends up
+/// as it was before the whole request.
 /// </summary>
 internal static class UndoCapture
 {
     [ThreadStatic]
-    private static Action? pending;
+    private static List<Action>? pending;
 
-    public static void Remember(Action undo) => pending ??= undo;
+    public static void Remember(Action undo) => (pending ??= new()).Add(undo);
 
     public static Action? Take()
     {
-        Action? undo = pending;
+        List<Action>? undos = pending;
         pending = null;
-        return undo;
+        if (undos is null || undos.Count == 0)
+            return null;
+        return () =>
+        {
+            for (int i = undos.Count - 1; i >= 0; i--)
+                undos[i]();
+        };
     }
 }
 

@@ -80,6 +80,44 @@ internal sealed class MachinesDomain : Domain
             });
         });
 
+        // what every new batch produces: for this machine (saved on it) or for every machine of its type (saved in the rules)
+        router.Put("/api/machines/{id}/output-rule", request =>
+        {
+            JObject body = request.BodyObject;
+            bool forType = body.Value<string>("scope") == "type";
+            bool clear = body.Value<bool?>("clear") ?? false;
+            string? itemId = body.Value<string>("itemId") is { Length: > 0 } id ? id : null;
+            int? stack = OptInt(body, "stack", 1, 999_999);
+            int? quality = OptInt(body, "quality", 0, 4);
+            if (quality is 3)
+                throw new ApiException(400, "'quality' must be 0, 1, 2 or 4.");
+            if (itemId != null && ItemRegistry.GetData(itemId) is null)
+                throw new ApiException(400, $"No item with ID '{itemId}'.");
+            OutputOverride? rule = clear || (itemId is null && stack is null && quality is null)
+                ? null
+                : new OutputOverride { ItemId = itemId, Stack = stack, Quality = quality };
+
+            return this.Write(() =>
+            {
+                SObject machine = Find(request.Params["id"]);
+                RememberMachine(machine);
+                if (forType)
+                {
+                    this.rules.Update(r =>
+                    {
+                        if (rule is null)
+                            r.MachineOutputRules.Remove(machine.QualifiedItemId);
+                        else
+                            r.MachineOutputRules[machine.QualifiedItemId] = rule;
+                    });
+                }
+                else
+                    MachineTools.SetOwnOverride(machine, rule);
+                MachineTools.ApplyOverride(machine); // the current batch follows the new rule too
+                return Describe(machine);
+            });
+        });
+
         // the time multiplier for every machine of this type (0 = instant, null = back to the global rule)
         router.Put("/api/machines/types/{machine}/speed", request =>
         {
@@ -104,14 +142,29 @@ internal sealed class MachinesDomain : Domain
         });
     }
 
+    /// <summary>The plain item outputs listed in the machine's Data/Machines rules (item queries and flavored items aren't resolved).</summary>
+    private static object[] PossibleOutputs(SObject machine)
+    {
+        return (machine.GetMachineData()?.OutputRules ?? new())
+            .SelectMany(rule => rule.OutputItem ?? new())
+            .Select(output => output.ItemId)
+            .Where(id => !string.IsNullOrEmpty(id) && ItemRegistry.GetData(id) != null)
+            .Select(id => ItemRegistry.GetData(id)!)
+            .GroupBy(data => data.QualifiedItemId)
+            .Select(g => (object)new { Id = g.Key, Name = g.First().DisplayName })
+            .ToArray();
+    }
+
     /// <summary>Let undo put the machine's output and timer back.</summary>
     private static void RememberMachine(SObject machine)
     {
         SObject? output = machine.heldObject.Value is { } held ? (SObject)ItemCloner.Clone(held) : null;
         int minutes = machine.MinutesUntilReady;
         bool ready = machine.readyForHarvest.Value, nextIndex = machine.showNextIndex.Value;
+        OutputOverride? ownRule = MachineTools.GetOwnOverride(machine);
         UndoCapture.Remember(() =>
         {
+            MachineTools.SetOwnOverride(machine, ownRule);
             machine.heldObject.Value = output;
             machine.MinutesUntilReady = minutes;
             machine.readyForHarvest.Value = ready;
@@ -143,8 +196,12 @@ internal sealed class MachinesDomain : Domain
         SObject? output = machine.heldObject.Value;
         Item? input = machine.lastInputItem.Value;
         RulesData r = RulesService.Current;
+        r.MachineOutputRules.TryGetValue(machine.QualifiedItemId, out OutputOverride? typeRule);
         return new
         {
+            OwnRule = MachineTools.GetOwnOverride(machine),
+            TypeRule = typeRule,
+            PossibleOutputs = PossibleOutputs(machine),
             QualifiedId = machine.QualifiedItemId,
             Name = machine.DisplayName,
             Output = output is null ? null : new { QualifiedId = output.QualifiedItemId, Name = output.DisplayName, output.Stack, output.Quality },

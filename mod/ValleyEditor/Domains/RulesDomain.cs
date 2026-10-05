@@ -28,6 +28,8 @@ internal sealed class RulesDomain : Domain
         ("freeBuild", (r, v) => r.FreeBuild = v),
         ("instantBuild", (r, v) => r.InstantBuild = v),
         ("freeCrafting", (r, v) => r.FreeCrafting = v),
+        ("infiniteReach", (r, v) => r.InfiniteReach = v),
+        ("placeAnywhere", (r, v) => r.PlaceAnywhere = v),
     };
 
     /// <summary>Whole-number rules, by JSON field name, with their allowed range.</summary>

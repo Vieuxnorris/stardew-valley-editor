@@ -2,12 +2,15 @@ using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Buffs;
 using StardewValley.Menus;
 using StardewValley.Monsters;
+using StardewValley.Objects;
+using StardewValley.TerrainFeatures;
 using StardewValley.Tools;
 using ValleyEditor.Domains;
 using SObject = StardewValley.Object;
@@ -67,6 +70,28 @@ internal sealed class CheatsService
         harmony.Patch(
             AccessTools.Method(typeof(GameLocation), "houseUpgradeAccept"),
             prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeHouseUpgradeAccept)));
+
+        // machine output overrides, on every new batch
+        harmony.Patch(
+            AccessTools.Method(typeof(SObject), nameof(SObject.OutputMachine)),
+            postfix: new HarmonyMethod(typeof(CheatsService), nameof(AfterOutputMachine)));
+
+        // infinite reach and placing anywhere
+        harmony.Patch(
+            AccessTools.Method(typeof(Utility), nameof(Utility.withinRadiusOfPlayer)),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeWithinRadius)));
+        harmony.Patch(
+            AccessTools.Method(typeof(Utility), nameof(Utility.tileWithinRadiusOfPlayer)),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeWithinRadius)));
+        harmony.Patch(
+            AccessTools.Method(typeof(Furniture), nameof(Furniture.IsCloseEnoughToFarmer)),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeFurnitureCloseEnough)));
+        harmony.Patch(
+            AccessTools.Method(typeof(Utility), nameof(Utility.isPlacementForbiddenHere), new[] { typeof(string) }),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforePlacementForbidden)));
+        harmony.Patch(
+            AccessTools.Method(typeof(Utility), nameof(Utility.playerCanPlaceItemHere)),
+            postfix: new HarmonyMethod(typeof(CheatsService), nameof(AfterPlayerCanPlaceItemHere)));
 
         // free crafting and cooking
         harmony.Patch(
@@ -267,6 +292,50 @@ internal sealed class CheatsService
         Game1.RequireCharacter("Robin").setNewDialogue("Data\\ExtraDialogue:Robin_HouseUpgrade_Accepted", add: true);
         Game1.drawDialogue(Game1.getCharacterFromName("Robin"));
         return false;
+    }
+
+    private static void AfterOutputMachine(SObject __instance, bool probe, bool __result)
+    {
+        if (__result && !probe)
+            MachineTools.ApplyOverride(__instance);
+    }
+
+    /// <summary>Reach checks (radius 1–2 around the player) always pass; wider radii are NPC behaviour (facing the farmer...) and stay vanilla.</summary>
+    private static bool BeforeWithinRadius(int tileRadius, Farmer f, ref bool __result)
+    {
+        if (!RulesService.Current.InfiniteReach || tileRadius > 2 || f != Game1.player)
+            return true;
+        __result = true;
+        return false;
+    }
+
+    private static bool BeforeFurnitureCloseEnough(Farmer f, ref bool __result)
+    {
+        if (!RulesService.Current.InfiniteReach || f != Game1.player)
+            return true;
+        __result = true;
+        return false;
+    }
+
+    private static bool BeforePlacementForbidden(ref bool __result)
+    {
+        if (!RulesService.Current.PlaceAnywhere)
+            return true;
+        __result = false;
+        return false;
+    }
+
+    /// <summary>Allow any free tile: no object, furniture, building or planted crop/tree in the way, so nothing gets overwritten.</summary>
+    private static void AfterPlayerCanPlaceItemHere(GameLocation location, Item item, int x, int y, Farmer f, ref bool __result)
+    {
+        if (__result || !RulesService.Current.PlaceAnywhere || location is null || item is not SObject obj || item is Tool || !obj.isPlaceable() || Game1.eventUp)
+            return;
+        Vector2 tile = new(x / 64, y / 64);
+        if (location.objects.ContainsKey(tile) || location.GetFurnitureAt(tile) != null || location.getBuildingAt(tile) != null)
+            return;
+        if (location.terrainFeatures.TryGetValue(tile, out TerrainFeature? feature) && feature is not (Flooring or HoeDirt { crop: null }))
+            return;
+        __result = true;
     }
 
     private static bool BeforeHasIngredients(ref bool __result)
