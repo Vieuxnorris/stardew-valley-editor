@@ -60,7 +60,7 @@ export function AnimalsTab({ onChanged }: { onChanged: () => void }) {
   );
 }
 
-function AnimalCard({ animal, setAnimals, onChanged }: { animal: Animal; setAnimals: (a: Animal[]) => void; onChanged: () => void }) {
+export function AnimalCard({ animal, setAnimals, onChanged }: { animal: Animal; setAnimals: (a: Animal[]) => void; onChanged: () => void }) {
   const { t } = useI18n();
   const { run, feedback, busy } = useAction(onChanged);
   const [name, setName] = useState(animal.name);

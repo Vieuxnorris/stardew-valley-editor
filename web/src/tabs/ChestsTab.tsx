@@ -64,7 +64,7 @@ export function ChestsTab({ onChanged }: { onChanged: () => void }) {
   );
 }
 
-function ChestEditor({ chest, onChanged, onContentChanged }: { chest: ChestInfo; onChanged: () => void; onContentChanged: () => void }) {
+export function ChestEditor({ chest, onChanged, onContentChanged }: { chest: Pick<ChestInfo, 'id' | 'name' | 'isFridge' | 'locationName'>; onChanged: () => void; onContentChanged: () => void }) {
   const { t } = useI18n();
   const [content, setContent] = useState<Inventory | null>(null);
   const [error, setError] = useState<string | null>(null);

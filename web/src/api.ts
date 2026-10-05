@@ -357,6 +357,7 @@ export interface BuildingInfo {
   skins: { id: string; name: string }[];
   hasAnimalDoor: boolean;
   animalDoorOpen: boolean;
+  interior: string | null;
 }
 
 export interface Farm {
@@ -411,3 +412,13 @@ export interface Collections {
 export const powerSpriteUrl = (id: string) => `/api/power-sprites/${encodeURIComponent(id)}?token=${token ?? ''}`;
 
 export const farmMapUrl = (location: string) => `/api/farm/map/${encodeURIComponent(location)}/image?token=${token ?? ''}`;
+
+export interface LocationView {
+  location: string;
+  displayName: string;
+  width: number;
+  height: number;
+  parent: { location: string; displayName: string; buildingId: string } | null;
+  chests: { id: string; name: string | null; x: number; y: number; width: number; height: number }[];
+  animals: { id: string; name: string; x: number; y: number; width: number; height: number }[];
+}

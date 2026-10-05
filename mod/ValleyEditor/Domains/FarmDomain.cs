@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.Buildings;
 using StardewValley.GameData.Buildings;
+using StardewValley.Locations;
 using StardewValley.Objects;
 using StardewValley.TerrainFeatures;
 using StardewValley.TokenizableStrings;
@@ -81,6 +82,9 @@ internal sealed class FarmDomain : Domain
 
         router.Get("/api/building-sprites/{building}", async request =>
             new BinaryResult(await this.sprites.RenderPng(() => ItemSprites.BuildingPixels(FindBuilding(request.Params["building"]))), "image/png"));
+
+        // what's clickable in a location (its buildings, chests and animals), and the building it's inside of, if any
+        router.Get("/api/farm/view/{location}", request => this.Read(() => View(FindLocation(request.Params["location"]))));
 
         // a location drawn like in game, for the clickable buildings map
         router.Get("/api/farm/map/{location}/image", async request =>
@@ -178,6 +182,7 @@ internal sealed class FarmDomain : Domain
                         Footprint = new { X = b.Building.tileX.Value * tile, Y = b.Building.tileY.Value * tile, Width = b.Building.tilesWide.Value * tile, Height = b.Building.tilesHigh.Value * tile },
                         SkinId = b.Building.skinId.Value,
                         Skins = data?.Skins.Select(s => new { s.Id, Name = s.Name is { Length: > 0 } skinName ? TokenParser.ParseText(skinName) ?? s.Id : s.Id }).ToArray() ?? Array.Empty<object>(),
+                        Interior = b.Building.GetIndoors()?.NameOrUniqueName,
                         HasAnimalDoor = b.Building.GetIndoors() is AnimalHouse,
                         AnimalDoorOpen = b.Building.animalDoorOpen.Value,
                         Type = b.Building.buildingType.Value,
@@ -200,6 +205,46 @@ internal sealed class FarmDomain : Domain
                 MaxLevel = MaxHouseLevel,
                 DaysUntilUpgrade = player.daysUntilHouseUpgrade.Value,
             },
+        };
+    }
+
+    private static object View(GameLocation location)
+    {
+        Point size = MapRenderer.Size(location);
+        string name = location.NameOrUniqueName;
+        var parent = AllBuildings().FirstOrDefault(b => b.Building.GetIndoors()?.NameOrUniqueName == name);
+        const int tile = MapRenderer.TileSize;
+
+        var chests = new List<object>();
+        foreach ((Vector2 pos, StardewValley.Object obj) in location.objects.Pairs)
+        {
+            if (obj is Chest { playerChest.Value: true } chest)
+                chests.Add(new { Id = $"{name}@{(int)pos.X},{(int)pos.Y}", Name = chest.DisplayName, X = (int)pos.X * tile, Y = (int)pos.Y * tile - tile, Width = tile, Height = tile * 2 });
+        }
+        Point? fridge = location switch
+        {
+            FarmHouse house when house.fridgePosition != Point.Zero => house.fridgePosition,
+            IslandFarmHouse island when island.fridgePosition != Point.Zero => island.fridgePosition,
+            _ => null,
+        };
+        if (fridge is { } f)
+            chests.Add(new { Id = $"{name}@fridge", Name = (string?)null, X = f.X * tile, Y = f.Y * tile - tile, Width = tile, Height = tile * 2 });
+
+        return new
+        {
+            Location = name,
+            DisplayName = location.DisplayName ?? location.Name,
+            Width = size.X,
+            Height = size.Y,
+            Parent = parent.Building is null ? null : new { Location = parent.Location.NameOrUniqueName, DisplayName = parent.Location.DisplayName ?? parent.Location.Name, BuildingId = parent.Id },
+            Chests = chests,
+            Animals = location.animals.Values
+                .Select(a =>
+                {
+                    Rectangle r = MapRenderer.CharacterBounds(a);
+                    return new { Id = a.myID.Value.ToString(), a.Name, r.X, r.Y, r.Width, r.Height };
+                })
+                .ToArray(),
         };
     }
 

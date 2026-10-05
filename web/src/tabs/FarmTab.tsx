@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
-import { api, buildingSpriteUrl, farmMapUrl, type BuildingInfo, type Farm, type FieldStats } from '../api';
+import { api, buildingSpriteUrl, farmMapUrl, type Animal, type BuildingInfo, type Farm, type FieldStats, type LocationView } from '../api';
+import { AnimalCard } from './AnimalsTab';
+import { ChestEditor } from './ChestsTab';
 import { FeedbackLine, useAction } from '../components';
 import { useI18n } from '../i18n';
 
@@ -149,25 +151,70 @@ function HouseCard({ farm, setFarm, onChanged }: CardProps) {
   );
 }
 
+const AUTO_REFRESH_MS = 10_000;
+
 function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
   const { t } = useI18n();
-  const [locationId, setLocationId] = useState(farm.buildingLocations[0]?.location ?? '');
-  const [selected, setSelected] = useState<string | null>(null);
+  // the levels opened so far: a root location, then building interiors
+  const [path, setPath] = useState<string[]>(() => [farm.buildingLocations[0]?.location ?? 'Farm']);
+  const [view, setView] = useState<LocationView | null>(null);
+  const [selected, setSelected] = useState<Selection | null>(null);
   const [hover, setHover] = useState<string | null>(null);
-  // bump after a change so the rendered map reloads
   const [version, setVersion] = useState(0);
+  const [auto, setAuto] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const current = path[path.length - 1];
 
-  const location = farm.buildingLocations.find((l) => l.location === locationId) ?? farm.buildingLocations[0];
-  const buildings = farm.buildings.filter((b) => b.location === location?.location);
-  const building = farm.buildings.find((b) => b.id === selected);
+  useEffect(() => {
+    api<LocationView>('GET', `/api/farm/view/${encodeURIComponent(current)}`).then(
+      (v) => {
+        setView(v);
+        setError(null);
+      },
+      (e) => setError(e.message),
+    );
+  }, [current, version]);
+
+  const refresh = () => {
+    api<Farm>('GET', '/api/farm').then(setFarm, () => {});
+    setVersion((v) => v + 1);
+  };
+
+  useEffect(() => {
+    if (!auto) return;
+    const timer = setInterval(() => !document.hidden && refresh(), AUTO_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [auto]);
+
   const update = (f: Farm) => {
     setFarm(f);
     setVersion((v) => v + 1);
   };
+  const go = (newPath: string[]) => {
+    setPath(newPath);
+    setSelected(null);
+    setView(null);
+  };
 
-  if (!location) return null;
+  const buildings = farm.buildings.filter((b) => b.location === current);
+  const building = selected?.kind === 'building' ? farm.buildings.find((b) => b.id === selected.id) : undefined;
+  const chest = selected?.kind === 'chest' ? view?.chests.find((c) => c.id === selected.id) : undefined;
+
   const pct = (value: number, total: number) => `${(value / total) * 100}%`;
-  const box = (r: Rect) => ({ left: pct(r.x, location.width), top: pct(r.y, location.height), width: pct(r.width, location.width), height: pct(r.height, location.height) });
+  const box = (r: Rect) => (view ? { left: pct(r.x, view.width), top: pct(r.y, view.height), width: pct(r.width, view.width), height: pct(r.height, view.height) } : {});
+  const spot = (key: string, kind: Selection['kind'], id: string, label: string, rect: Rect, extra = '', onDoubleClick?: () => void) => (
+    <button
+      key={key}
+      class={`map-area ${kind}-area ${selected?.kind === kind && selected.id === id ? 'current' : ''} ${extra}`}
+      style={box(rect)}
+      title={label}
+      aria-label={label}
+      onMouseEnter={() => setHover(label)}
+      onMouseLeave={() => setHover(null)}
+      onClick={() => setSelected({ kind, id })}
+      onDblClick={onDoubleClick}
+    />
+  );
 
   return (
     <section class="card">
@@ -176,7 +223,7 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
         {farm.buildingLocations.length > 1 && (
           <div class="tabs compact">
             {farm.buildingLocations.map((l) => (
-              <button key={l.location} class={l.location === location.location ? 'active' : ''} onClick={() => setLocationId(l.location)}>
+              <button key={l.location} class={l.location === path[0] ? 'active' : ''} onClick={() => go([l.location])}>
                 {l.displayName}
               </button>
             ))}
@@ -184,42 +231,95 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
         )}
       </div>
       <p class="muted">{t('farm.buildingsHint')}</p>
+      <div class="fields map-toolbar">
+        <nav class="breadcrumb" aria-label={t('farm.levels')}>
+          {path.map((loc, i) => (
+            <span key={loc}>
+              {i > 0 && ' › '}
+              {i < path.length - 1 ? (
+                <button class="link" onClick={() => go(path.slice(0, i + 1))}>
+                  {i === 0 ? (farm.buildingLocations.find((l) => l.location === loc)?.displayName ?? loc) : (farm.buildings.find((b) => b.interior === loc)?.name ?? loc)}
+                </button>
+              ) : (
+                <strong>{view?.displayName ?? loc}</strong>
+              )}
+            </span>
+          ))}
+        </nav>
+        <span class="spacer" />
+        <button class="secondary small" onClick={refresh}>
+          ↻ {t('common.reload')}
+        </button>
+        <label class="check">
+          <input type="checkbox" checked={auto} onChange={(e) => setAuto((e.target as HTMLInputElement).checked)} /> {t('farm.autoRefresh')}
+        </label>
+      </div>
+      {error && <p class="error">{error}</p>}
       <div class="farm-layout">
-        <div class="world-map farm-map" style={{ aspectRatio: `${location.width} / ${location.height}` }}>
-          <img src={`${farmMapUrl(location.location)}&v=${version}`} alt={location.displayName} />
-          {/* lower buildings last, so they sit on top where sprites overlap */}
-          {[...buildings]
-            .sort((a, b) => a.sprite.y + a.sprite.height - (b.sprite.y + b.sprite.height))
-            .map((b) => {
-              const underConstruction = b.daysOfConstructionLeft > 0;
-              return (
-                <button
-                  key={b.id}
-                  class={`map-area building-area ${b.id === selected ? 'current' : ''} ${underConstruction ? 'construction' : ''}`}
-                  style={box(underConstruction ? b.footprint : b.sprite)}
-                  title={b.name}
-                  aria-label={b.name}
-                  onMouseEnter={() => setHover(b.name)}
-                  onMouseLeave={() => setHover(null)}
-                  onClick={() => setSelected(b.id)}
-                />
-              );
-            })}
-          {hover && <span class="map-label">{hover}</span>}
-        </div>
-        {building ? (
-          <BuildingEditor key={building.id} building={building} update={update} onChanged={onChanged} />
+        {view ? (
+          <div class="world-map farm-map" style={{ aspectRatio: `${view.width} / ${view.height}` }}>
+            <img src={`${farmMapUrl(current)}&v=${version}`} alt={view.displayName} />
+            {/* lower buildings last, so they sit on top where sprites overlap */}
+            {[...buildings]
+              .sort((a, b) => a.sprite.y + a.sprite.height - (b.sprite.y + b.sprite.height))
+              .map((b) =>
+                spot(`b-${b.id}`, 'building', b.id, b.name, b.daysOfConstructionLeft > 0 ? b.footprint : b.sprite, b.daysOfConstructionLeft > 0 ? 'construction' : '', b.interior ? () => go([...path, b.interior!]) : undefined),
+              )}
+            {view.chests.map((c) => spot(`c-${c.id}`, 'chest', c.id, c.name ?? t('chests.fridge'), c))}
+            {view.animals.map((a) => spot(`a-${a.id}`, 'animal', a.id, a.name, a))}
+            {hover && <span class="map-label">{hover}</span>}
+          </div>
         ) : (
-          <p class="muted">{t('farm.pickBuilding')}</p>
+          <p>{t('common.loading')}</p>
         )}
+        <div class="map-panel">
+          {view?.parent && path.length === 1 && (
+            <p class="muted">
+              {t('farm.insideOf')} {view.parent.displayName}
+            </p>
+          )}
+          {building ? (
+            <BuildingEditor key={building.id} building={building} update={update} onChanged={onChanged} onEnter={building.interior ? () => go([...path, building.interior!]) : undefined} />
+          ) : chest ? (
+            <ChestEditor
+              key={chest.id}
+              chest={{ id: chest.id, name: chest.name ?? t('chests.fridge'), isFridge: chest.name === null, locationName: view?.displayName ?? '' }}
+              onChanged={onChanged}
+              onContentChanged={() => {}}
+            />
+          ) : selected?.kind === 'animal' ? (
+            <AnimalPanel key={selected.id} id={selected.id} onChanged={onChanged} />
+          ) : (
+            <p class="muted">{t('farm.pickBuilding')}</p>
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
+type Selection = { kind: 'building' | 'chest' | 'animal'; id: string };
+
+/** One animal's card, loaded on its own for the map's side panel. */
+function AnimalPanel({ id, onChanged }: { id: string; onChanged: () => void }) {
+  const { t } = useI18n();
+  const [animals, setAnimals] = useState<Animal[] | null>(null);
+  useEffect(() => {
+    api<Animal[]>('GET', '/api/animals').then(setAnimals, () => setAnimals([]));
+  }, [id]);
+  const animal = animals?.find((a) => a.id === id);
+  if (!animals) return <p>{t('common.loading')}</p>;
+  if (!animal) return <p class="muted">{t('animals.none')}</p>;
+  return (
+    <ul class="animal-grid single">
+      <AnimalCard animal={animal} setAnimals={setAnimals} onChanged={onChanged} />
+    </ul>
+  );
+}
+
 type Rect = { x: number; y: number; width: number; height: number };
 
-function BuildingEditor({ building: b, update, onChanged }: { building: BuildingInfo; update: (f: Farm) => void; onChanged: () => void }) {
+function BuildingEditor({ building: b, update, onChanged, onEnter }: { building: BuildingInfo; update: (f: Farm) => void; onChanged: () => void; onEnter?: () => void }) {
   const { t } = useI18n();
   const { run, feedback, busy } = useAction(onChanged);
   const path = `/api/farm/buildings/${encodeURIComponent(b.id)}`;
@@ -244,6 +344,11 @@ function BuildingEditor({ building: b, update, onChanged }: { building: Building
         </p>
       )}
       <div class="stack">
+        {onEnter && !b.daysOfConstructionLeft && (
+          <button class="secondary" onClick={onEnter}>
+            🚪 {t('farm.enter')}
+          </button>
+        )}
         {inProgress && (
           <button disabled={busy} onClick={() => run(() => api<Farm>('POST', `${path}/finish`), update)}>
             {t('farm.finish')}

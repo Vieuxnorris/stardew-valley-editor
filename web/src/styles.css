@@ -861,3 +861,50 @@ progress {
 .building-editor h4 {
   margin: 0;
 }
+
+.map-toolbar {
+  align-items: center;
+}
+
+.map-toolbar .spacer {
+  flex: 1;
+}
+
+.breadcrumb button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.farm-layout {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.map-panel {
+  min-width: 0;
+}
+
+.map-panel .card {
+  box-shadow: none;
+  padding: 8px;
+}
+
+.chest-area:hover,
+.animal-area:hover,
+.chest-area:focus-visible,
+.animal-area:focus-visible {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: #fff;
+}
+
+.animal-grid.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.map-panel .add-item {
+  grid-template-columns: minmax(0, 1fr);
+}
+
