@@ -9,7 +9,7 @@ const SPEEDS: (number | null)[] = [null, 2, 1, 0.5, 0.25, 0.1, 0];
 const formatMinutes = (minutes: number) => (minutes >= 60 ? `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}` : `${minutes} min`);
 
 /** A placed machine: what it's making, finish now, change the output, and the speed of every machine of its type. */
-export function MachinePanel({ id, onChanged, onUpdated }: { id: string; onChanged: () => void; onUpdated: () => void }) {
+export function MachinePanel({ id, version = 0, onChanged, onUpdated }: { id: string; version?: number; onChanged: () => void; onUpdated: () => void }) {
   const { t } = useI18n();
   const { run, feedback, busy } = useAction(onChanged);
   const [machine, setMachine] = useState<MachineInfo | null>(null);
@@ -28,6 +28,19 @@ export function MachinePanel({ id, onChanged, onUpdated }: { id: string; onChang
   useEffect(() => {
     api<MachineInfo>('GET', path).then(load, (e) => setError(e.message));
   }, [path]);
+
+  // the map refreshed: update the status, and the form only if the game changed the output meanwhile
+  useEffect(() => {
+    if (version === 0) return;
+    api<MachineInfo>('GET', path).then(
+      (m) => {
+        if (m.output?.qualifiedId !== machine?.output?.qualifiedId || m.output?.stack !== machine?.output?.stack) load(m);
+        else setMachine(m);
+        setError(null);
+      },
+      (e) => setError(e.message),
+    );
+  }, [version]);
 
   if (!machine) return <p>{error ?? t('common.loading')}</p>;
 

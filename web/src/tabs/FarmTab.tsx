@@ -162,7 +162,7 @@ function HouseCard({ farm, setFarm, onChanged }: CardProps) {
   );
 }
 
-const AUTO_REFRESH_MS = 10_000;
+const AUTO_REFRESH_MS = 5_000;
 
 function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
   const { t } = useI18n();
@@ -174,6 +174,7 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
   const [version, setVersion] = useState(0);
   const [auto, setAuto] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
   const current = path[path.length - 1];
 
   useEffect(() => {
@@ -181,6 +182,7 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
       (v) => {
         setView(v);
         setError(null);
+        setRefreshedAt(new Date().toLocaleTimeString());
       },
       (e) => setError(e.message),
     );
@@ -264,6 +266,11 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
         <label class="check">
           <input type="checkbox" checked={auto} onChange={(e) => setAuto((e.target as HTMLInputElement).checked)} /> {t('farm.autoRefresh')}
         </label>
+        {refreshedAt && (
+          <span class="muted small-text">
+            {t('farm.refreshedAt')} {refreshedAt}
+          </span>
+        )}
       </div>
       {error && <p class="error">{error}</p>}
       <div class="farm-layout">
@@ -295,14 +302,15 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
           ) : chest ? (
             <ChestEditor
               key={chest.id}
+              version={version}
               chest={{ id: chest.id, name: chest.name ?? t('chests.fridge'), isFridge: chest.name === null, locationName: view?.displayName ?? '' }}
               onChanged={onChanged}
               onContentChanged={() => {}}
             />
           ) : selected?.kind === 'machine' ? (
-            <MachinePanel key={selected.id} id={selected.id} onChanged={onChanged} onUpdated={() => setVersion((v) => v + 1)} />
+            <MachinePanel key={selected.id} id={selected.id} version={version} onChanged={onChanged} onUpdated={() => setVersion((v) => v + 1)} />
           ) : selected?.kind === 'animal' ? (
-            <AnimalPanel key={selected.id} id={selected.id} onChanged={onChanged} />
+            <AnimalPanel key={selected.id} id={selected.id} version={version} onChanged={onChanged} />
           ) : (
             <p class="muted">{t('farm.pickBuilding')}</p>
           )}
@@ -315,12 +323,12 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
 type Selection = { kind: 'building' | 'chest' | 'animal' | 'machine'; id: string };
 
 /** One animal's card, loaded on its own for the map's side panel. */
-function AnimalPanel({ id, onChanged }: { id: string; onChanged: () => void }) {
+function AnimalPanel({ id, version, onChanged }: { id: string; version: number; onChanged: () => void }) {
   const { t } = useI18n();
   const [animals, setAnimals] = useState<Animal[] | null>(null);
   useEffect(() => {
     api<Animal[]>('GET', '/api/animals').then(setAnimals, () => setAnimals([]));
-  }, [id]);
+  }, [id, version]);
   const animal = animals?.find((a) => a.id === id);
   if (!animals) return <p>{t('common.loading')}</p>;
   if (!animal) return <p class="muted">{t('animals.none')}</p>;

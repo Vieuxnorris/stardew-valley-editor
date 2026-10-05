@@ -64,7 +64,7 @@ export function ChestsTab({ onChanged }: { onChanged: () => void }) {
   );
 }
 
-export function ChestEditor({ chest, onChanged, onContentChanged }: { chest: Pick<ChestInfo, 'id' | 'name' | 'isFridge' | 'locationName'>; onChanged: () => void; onContentChanged: () => void }) {
+export function ChestEditor({ chest, version = 0, onChanged, onContentChanged }: { chest: Pick<ChestInfo, 'id' | 'name' | 'isFridge' | 'locationName'>; version?: number; onChanged: () => void; onContentChanged: () => void }) {
   const { t } = useI18n();
   const [content, setContent] = useState<Inventory | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export function ChestEditor({ chest, onChanged, onContentChanged }: { chest: Pic
 
   useEffect(() => {
     api<Inventory>('GET', basePath).then(setContent, (e) => setError(e.message));
-  }, [basePath]);
+  }, [basePath, version]);
 
   if (!content) return <p>{error ?? t('common.loading')}</p>;
 

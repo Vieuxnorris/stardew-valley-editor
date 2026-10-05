@@ -74,7 +74,7 @@ export function AnimalCard({ animal, setAnimals, onChanged }: { animal: Animal; 
     setFriendship(animal.friendship);
     setHappiness(animal.happiness);
     setFullness(animal.fullness);
-  }, [animal]);
+  }, [animal.name, animal.friendship, animal.happiness, animal.fullness]);
 
   const path = `/api/animals/${encodeURIComponent(animal.id)}`;
   const hearts = friendship / 200;

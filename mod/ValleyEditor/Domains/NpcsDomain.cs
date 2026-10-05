@@ -84,7 +84,7 @@ internal sealed class NpcsDomain : Domain
             });
         });
 
-        router.Get("/api/portraits/{name}", async request => new BinaryResult(await this.sprites.GetPortraitPng(request.Params["name"]), "image/png"));
+        router.Get("/api/portraits/{name}", async request => new BinaryResult(await this.sprites.GetPortraitPng(request.Params["name"]), "image/png", CacheSeconds: 3600));
     }
 
     /// <summary>Villagers the player can befriend, as shown on the social tab.</summary>

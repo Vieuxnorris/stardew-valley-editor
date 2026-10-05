@@ -68,7 +68,7 @@ internal sealed class CollectionsDomain : Domain
                 throw new ApiException(404, $"No power '{request.Params["id"]}'.");
             Texture2D texture = Game1.content.Load<Texture2D>(power.TexturePath);
             return ItemSprites.ReadPixels(texture, new Rectangle(power.TexturePosition.X, power.TexturePosition.Y, 16, 16));
-        }), "image/png"));
+        }), "image/png", CacheSeconds: 3600));
     }
 
     private static object Snapshot()

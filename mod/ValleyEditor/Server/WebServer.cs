@@ -152,7 +152,8 @@ internal sealed class WebServer : IDisposable
             object? result = await work;
             if (result is BinaryResult binary)
             {
-                response.Headers["Cache-Control"] = "private, max-age=3600";
+                if (binary.CacheSeconds > 0)
+                    response.Headers["Cache-Control"] = $"private, max-age={binary.CacheSeconds}";
                 response.ContentType = binary.ContentType;
                 response.ContentLength64 = binary.Bytes.Length;
                 await response.OutputStream.WriteAsync(binary.Bytes);

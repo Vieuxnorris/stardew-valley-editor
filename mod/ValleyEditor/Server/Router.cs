@@ -31,7 +31,8 @@ internal sealed class ApiException : Exception
 }
 
 /// <summary>A handler result sent as raw bytes instead of JSON.</summary>
-internal sealed record BinaryResult(byte[] Bytes, string ContentType);
+/// <param name="CacheSeconds">How long the browser may reuse it: only for images that don't change (item icons...); 0 for live ones (maps, buildings, animals).</param>
+internal sealed record BinaryResult(byte[] Bytes, string ContentType, int CacheSeconds = 0);
 
 /// <summary>Handles one API route; the result is serialised to JSON unless it's a <see cref="BinaryResult"/>.</summary>
 internal delegate Task<object?> ApiHandler(ApiRequest request);

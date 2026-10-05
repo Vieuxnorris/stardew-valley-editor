@@ -28,7 +28,7 @@ internal sealed class MonstersDomain : Domain
     {
         router.Get("/api/monsters", _ => this.Read(this.Snapshot));
 
-        router.Get("/api/monster-sprites/{name}", async request => new BinaryResult(await this.sprites.GetMonsterPng(request.Params["name"]), "image/png"));
+        router.Get("/api/monster-sprites/{name}", async request => new BinaryResult(await this.sprites.GetMonsterPng(request.Params["name"]), "image/png", CacheSeconds: 3600));
 
         router.Put("/api/monsters/{name}/drops", request => this.Write(() =>
         {
