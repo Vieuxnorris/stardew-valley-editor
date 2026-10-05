@@ -18,7 +18,7 @@ internal sealed class InventoryDomain : Domain
     {
         router.Get("/api/inventory", _ => this.Read(Snapshot));
 
-        SlotRoutes.Register(router, "/api/inventory", this.Write, _ => Backpack(), _ => Snapshot());
+        SlotRoutes.Register(router, "/api/inventory", this.Read, this.Write, _ => Backpack(), _ => Snapshot());
 
         router.Put("/api/inventory/size", request =>
         {

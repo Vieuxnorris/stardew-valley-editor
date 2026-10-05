@@ -52,6 +52,7 @@ internal static class SlotRoutes
     public static void Register(
         Router router,
         string prefix,
+        Func<Func<object?>, System.Threading.Tasks.Task<object?>> read,
         Func<Func<object?>, System.Threading.Tasks.Task<object?>> write,
         Func<ApiRequest, ItemContainer> resolve,
         Func<ApiRequest, object> snapshot)
@@ -105,6 +106,35 @@ internal static class SlotRoutes
                 if (quality.HasValue && ItemJson.CanHaveQuality(item))
                     item.Quality = quality.Value;
                 return snapshot(request);
+            });
+        });
+
+        // the item editor: type-specific details (weapon stats, enchantments, tool level...)
+        router.Get(prefix + "/{slot}/details", request =>
+        {
+            int slot = ParseSlot(request);
+            return read(() =>
+            {
+                ItemContainer container = resolve(request);
+                container.CheckSlot(slot);
+                Item item = container.Get(slot) ?? throw new ApiException(404, $"Slot {slot} is empty.");
+                return ItemEditor.Describe(item);
+            });
+        });
+
+        router.Patch(prefix + "/{slot}/details", request =>
+        {
+            int slot = ParseSlot(request);
+            JObject body = request.BodyObject;
+            return write(() =>
+            {
+                ItemContainer container = resolve(request);
+                container.CheckSlot(slot);
+                Item item = container.Get(slot) ?? throw new ApiException(404, $"Slot {slot} is empty.");
+                Item? replacement = ItemEditor.Apply(item, body);
+                if (replacement != null)
+                    container.Set(slot, item = replacement);
+                return new { Details = ItemEditor.Describe(item), Container = snapshot(request) };
             });
         });
 

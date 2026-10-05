@@ -23,7 +23,7 @@ internal sealed class ChestsDomain : Domain
         router.Get("/api/chests", _ => this.Read(List));
         router.Get("/api/chests/{chest}", request => this.Read(() => Snapshot(request.Params["chest"])));
 
-        SlotRoutes.Register(router, "/api/chests/{chest}", this.Write, request => Container(Find(request.Params["chest"])), request => Snapshot(request.Params["chest"]));
+        SlotRoutes.Register(router, "/api/chests/{chest}", this.Read, this.Write, request => Container(Find(request.Params["chest"])), request => Snapshot(request.Params["chest"]));
     }
 
     /// <summary>A chest's ID: <c>location@x,y</c>, or <c>location@fridge</c>.</summary>
