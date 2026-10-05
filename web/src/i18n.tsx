@@ -869,6 +869,9 @@ export type Lang = 'fr' | 'en';
 const LANG_KEY = 'valley-editor-lang';
 
 function initialLang(): Lang {
+  // ?lang=en|fr in the URL wins (direct links, screenshots)
+  const fromUrl = new URLSearchParams(location.search).get('lang');
+  if (fromUrl === 'fr' || fromUrl === 'en') return fromUrl;
   try {
     const stored = localStorage.getItem(LANG_KEY);
     if (stored === 'fr' || stored === 'en') return stored;
