@@ -161,6 +161,26 @@ export interface Progression {
   museum: { donated: number; donatable: number };
 }
 
+export interface Villager {
+  name: string;
+  displayName: string;
+  met: boolean;
+  points: number;
+  hearts: number;
+  maxHearts: number;
+  maxPoints: number;
+  datable: boolean;
+  status: 'Friendly' | 'Dating' | 'Engaged' | 'Married' | 'Divorced';
+  giftsThisWeek: number;
+  giftsToday: number;
+  talkedToToday: boolean;
+  birthSeason: Season | null;
+  birthDay: number | null;
+  location: string | null;
+}
+
+export const portraitUrl = (name: string) => `/api/portraits/${encodeURIComponent(name)}?token=${token ?? ''}`;
+
 export interface Quest {
   index: number;
   id: string | null;

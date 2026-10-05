@@ -31,7 +31,8 @@ internal sealed class ModEntry : Mod
         this.config = helper.ReadConfig<ModConfig>();
 
         var router = new Router();
-        var items = new ItemsDomain(this.dispatcher, this.state, helper.ModRegistry, new ItemSprites(this.dispatcher));
+        var sprites = new ItemSprites(this.dispatcher);
+        var items = new ItemsDomain(this.dispatcher, this.state, helper.ModRegistry, sprites);
         Domain[] domains =
         {
             new StatusDomain(this.dispatcher, this.state, this.ModManifest),
@@ -41,6 +42,7 @@ internal sealed class ModEntry : Mod
             new WorldDomain(this.dispatcher, this.state),
             new ProgressionDomain(this.dispatcher, this.state),
             new QuestsDomain(this.dispatcher, this.state),
+            new NpcsDomain(this.dispatcher, this.state, sprites),
         };
         foreach (Domain domain in domains)
             domain.Register(router);

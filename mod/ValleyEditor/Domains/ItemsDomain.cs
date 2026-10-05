@@ -75,7 +75,7 @@ internal sealed class ItemsDomain : Domain
             };
         });
 
-        router.Get("/api/sprites/{id}", async request => new BinaryResult(await this.sprites.GetPng(request.Params["id"]), "image/png"));
+        router.Get("/api/sprites/{id}", async request => new BinaryResult(await this.sprites.GetItemPng(request.Params["id"]), "image/png"));
     }
 
     private async Task<CatalogEntry[]> GetCatalog()

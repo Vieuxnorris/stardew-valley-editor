@@ -440,3 +440,58 @@ fieldset {
 .flag-list button {
   padding: 0 8px;
 }
+
+.npc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.npc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.npc-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.npc-head h3 {
+  margin: 0;
+}
+
+.npc-head p {
+  margin: 0;
+}
+
+.portrait {
+  image-rendering: pixelated;
+  border-radius: 6px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.hearts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.heart {
+  padding: 0 2px;
+  background: transparent;
+  color: var(--border);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.heart.full {
+  color: #d6304f;
+}
+
+.npc-card input[type="number"] {
+  width: 90px;
+}
