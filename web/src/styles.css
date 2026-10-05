@@ -929,3 +929,38 @@ progress {
   width: 4.5em;
   margin-right: 6px;
 }
+
+.history-panel {
+  position: fixed;
+  right: 16px;
+  top: 64px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.history-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-list li {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.history-list li.undone {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.history-detail code {
+  font-size: 0.75rem;
+  word-break: break-all;
+}

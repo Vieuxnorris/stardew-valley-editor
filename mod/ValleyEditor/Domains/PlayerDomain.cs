@@ -38,6 +38,7 @@ internal sealed class PlayerDomain : Domain
             return this.Write(() =>
             {
                 Farmer player = Game1.player;
+                RememberPlayer(player);
                 if (money.HasValue)
                     player.Money = money.Value;
                 if (qiGems.HasValue)
@@ -76,6 +77,7 @@ internal sealed class PlayerDomain : Domain
             return this.Write(() =>
             {
                 Farmer player = Game1.player;
+                RememberPlayer(player);
                 if (level.HasValue)
                     SetLevel(player, skill, level.Value);
                 else
@@ -94,12 +96,47 @@ internal sealed class PlayerDomain : Domain
             return this.Write(() =>
             {
                 Farmer player = Game1.player;
+                RememberPlayer(player);
                 player.professions.Clear();
                 foreach (int id in professions)
                     player.professions.Add(id);
                 LevelUpMenu.RevalidateHealth(player); // Fighter and Defender add max health
                 return Snapshot();
             });
+        });
+    }
+
+    /// <summary>Let undo put back everything this domain edits: money, stats, skills and professions.</summary>
+    private static void RememberPlayer(Farmer player)
+    {
+        int money = player.Money, qiGems = player.QiGems, walnuts = Game1.netWorldState.Value.GoldenWalnuts;
+        int maxHealth = player.maxHealth, health = player.health, maxStamina = player.maxStamina.Value;
+        float stamina = player.Stamina;
+        uint mastery = Game1.stats.Get("MasteryExp");
+        int[] levels = Enumerable.Range(0, SkillKeys.Length).Select(i => SkillLevel(player, i).Value).ToArray();
+        int[] experience = player.experiencePoints.ToArray();
+        int[] professions = player.professions.ToArray();
+        int queuedLevels = player.newLevels.Count;
+
+        UndoCapture.Remember(() =>
+        {
+            player.Money = money;
+            player.QiGems = qiGems;
+            Game1.netWorldState.Value.GoldenWalnuts = walnuts;
+            player.maxHealth = maxHealth;
+            player.health = health;
+            player.maxStamina.Value = maxStamina;
+            player.Stamina = stamina;
+            Game1.stats.Set("MasteryExp", mastery);
+            for (int i = 0; i < levels.Length; i++)
+                SkillLevel(player, i).Value = levels[i];
+            for (int i = 0; i < experience.Length; i++)
+                player.experiencePoints[i] = experience[i];
+            player.professions.Clear();
+            foreach (int id in professions)
+                player.professions.Add(id);
+            while (player.newLevels.Count > queuedLevels)
+                player.newLevels.RemoveAt(player.newLevels.Count - 1); // level-ups queued by the change
         });
     }
 

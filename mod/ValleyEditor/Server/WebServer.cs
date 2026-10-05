@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using StardewModdingAPI;
+using ValleyEditor.Domains;
 
 namespace ValleyEditor.Server;
 
@@ -141,6 +142,7 @@ internal sealed class WebServer : IDisposable
             JToken? body = await ReadBody(request);
             var apiRequest = new ApiRequest(request.HttpMethod.ToUpperInvariant(), path, values, request.QueryString, body);
 
+            RequestContext.Current.Value = apiRequest;
             Task<object?> work = handler(apiRequest);
             if (await Task.WhenAny(work, Task.Delay(ApiTimeout)) != work)
                 throw new ApiException(503, "The game did not respond in time. Is a save loaded and the game running?");

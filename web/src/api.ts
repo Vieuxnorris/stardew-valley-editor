@@ -445,3 +445,13 @@ export interface ItemDetails {
   boots: { defense: number; immunity: number } | null;
   clothing: { color: string; dyeable: boolean } | null;
 }
+
+export interface HistoryEntry {
+  id: number;
+  time: string;
+  method: string;
+  path: string;
+  summary: string | null;
+  undoable: boolean;
+  undone: boolean;
+}

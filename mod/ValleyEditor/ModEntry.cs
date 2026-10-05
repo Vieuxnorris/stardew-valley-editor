@@ -58,6 +58,7 @@ internal sealed class ModEntry : Mod
             new AnimalsDomain(this.dispatcher, this.state, sprites),
             new ChestsDomain(this.dispatcher, this.state),
             new CollectionsDomain(this.dispatcher, this.state, sprites),
+            new HistoryDomain(this.dispatcher, this.state),
         };
         foreach (Domain domain in domains)
             domain.Register(router);
@@ -79,11 +80,21 @@ internal sealed class ModEntry : Mod
             this.state.Tick++;
             this.dispatcher.Drain();
         };
-        helper.Events.GameLoop.Saved += (_, _) => this.state.UnsavedChanges = false;
-        helper.Events.GameLoop.ReturnedToTitle += (_, _) => this.state.UnsavedChanges = false;
+        // undo restores snapshots, which would overwrite a whole day of play after the nightly save: start over
+        helper.Events.GameLoop.Saved += (_, _) =>
+        {
+            this.state.UnsavedChanges = false;
+            this.state.History.Clear();
+        };
+        helper.Events.GameLoop.ReturnedToTitle += (_, _) =>
+        {
+            this.state.UnsavedChanges = false;
+            this.state.History.Clear();
+        };
         helper.Events.GameLoop.SaveLoaded += (_, _) =>
         {
             this.state.UnsavedChanges = false;
+            this.state.History.Clear();
             items.Invalidate();
             if (this.config.OpenBrowserOnSaveLoaded)
                 this.OpenBrowser();

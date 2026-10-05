@@ -47,6 +47,22 @@ internal sealed class WorldDomain : Domain
 
             return this.Write(() =>
             {
+                int oldYear = Game1.year, oldDay = Game1.dayOfMonth, oldTime = Game1.timeOfDay;
+                Season oldSeason = Game1.season;
+                uint oldDaysPlayed = Game1.stats.DaysPlayed;
+                UndoCapture.Remember(() =>
+                {
+                    Game1.year = oldYear;
+                    if (Game1.season != oldSeason)
+                    {
+                        Game1.season = oldSeason;
+                        Game1.setGraphicsForSeason();
+                    }
+                    Game1.dayOfMonth = oldDay;
+                    Game1.stats.DaysPlayed = oldDaysPlayed;
+                    Game1.timeOfDay = oldTime;
+                });
+
                 if (year.HasValue)
                     Game1.year = year.Value;
                 if (season.HasValue && season.Value != Game1.season)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using StardewModdingAPI;
@@ -17,6 +18,30 @@ internal sealed class EditorState
 
     /// <summary>The tick of the editor's last change, so rules reacting to inventory changes can ignore the editor's own.</summary>
     public int LastWriteTick { get; set; } = int.MinValue / 2;
+
+    private const int MaxHistory = 200;
+    private int nextHistoryId = 1;
+
+    /// <summary>The editor's changes since the save was loaded, oldest first. Game thread only.</summary>
+    public List<HistoryEntry> History { get; } = new();
+
+    public void Record(ApiRequest? request, Action? undo)
+    {
+        string? summary = request?.Body?.ToString(Newtonsoft.Json.Formatting.None);
+        if (summary is { Length: > 160 })
+            summary = summary[..157] + "...";
+        this.History.Add(new HistoryEntry
+        {
+            Id = this.nextHistoryId++,
+            Time = DateTime.Now,
+            Method = request?.Method ?? "?",
+            Path = request?.Path ?? "?",
+            Summary = summary,
+            Undo = undo,
+        });
+        if (this.History.Count > MaxHistory)
+            this.History.RemoveAt(0);
+    }
 }
 
 /// <summary>A group of API routes for one area of the game (player, inventory, NPCs...).</summary>
@@ -42,14 +67,29 @@ internal abstract class Domain
     });
 
     /// <summary>Change game state on the game thread and flag unsaved changes. Fails with 409 if no save is loaded.</summary>
-    protected Task<object?> Write(Func<object?> write) => this.game.Run(() =>
+    protected Task<object?> Write(Func<object?> write)
     {
-        RequireWorld();
-        object? result = write();
-        this.State.UnsavedChanges = true;
-        this.State.LastWriteTick = this.State.Tick;
-        return result;
-    });
+        ApiRequest? request = RequestContext.Current.Value; // captured here, on the HTTP side
+        return this.game.Run(() =>
+        {
+            RequireWorld();
+            UndoCapture.Take(); // drop anything left over from a failed request
+            object? result;
+            try
+            {
+                result = write();
+            }
+            catch
+            {
+                UndoCapture.Take();
+                throw;
+            }
+            this.State.Record(request, UndoCapture.Take());
+            this.State.UnsavedChanges = true;
+            this.State.LastWriteTick = this.State.Tick;
+            return result;
+        });
+    }
 
     /// <summary>Run on the game thread without requiring a loaded save.</summary>
     protected Task<object?> Run(Func<object?> func) => this.game.Run(func);

@@ -69,6 +69,7 @@ internal static class SlotRoutes
             return write(() =>
             {
                 ItemContainer container = resolve(request);
+                UndoCapture.Remember(ItemCloner.SnapshotList(container.Items));
                 Item item = ItemRegistry.Create(id, 1, quality, allowNull: true)
                     ?? throw new ApiException(404, $"No item with ID '{id}'.");
                 item.Stack = Math.Min(stack, item.maximumStackSize());
@@ -99,6 +100,7 @@ internal static class SlotRoutes
             return write(() =>
             {
                 ItemContainer container = resolve(request);
+                UndoCapture.Remember(ItemCloner.SnapshotList(container.Items));
                 container.CheckSlot(slot);
                 Item item = container.Get(slot) ?? throw new ApiException(404, $"Slot {slot} is empty.");
                 if (stack.HasValue)
@@ -129,6 +131,7 @@ internal static class SlotRoutes
             return write(() =>
             {
                 ItemContainer container = resolve(request);
+                UndoCapture.Remember(ItemCloner.SnapshotList(container.Items));
                 container.CheckSlot(slot);
                 Item item = container.Get(slot) ?? throw new ApiException(404, $"Slot {slot} is empty.");
                 Item? replacement = ItemEditor.Apply(item, body);
@@ -144,6 +147,7 @@ internal static class SlotRoutes
             return write(() =>
             {
                 ItemContainer container = resolve(request);
+                UndoCapture.Remember(ItemCloner.SnapshotList(container.Items));
                 container.CheckSlot(slot);
                 container.Set(slot, null);
                 return snapshot(request);
@@ -159,6 +163,7 @@ internal static class SlotRoutes
             return write(() =>
             {
                 ItemContainer container = resolve(request);
+                UndoCapture.Remember(ItemCloner.SnapshotList(container.Items));
                 container.CheckSlot(from);
                 container.CheckSlot(to);
                 Item? a = container.Get(from), b = container.Get(to);

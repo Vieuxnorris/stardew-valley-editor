@@ -49,6 +49,9 @@ internal sealed class RulesService
     /// <summary>Change the rules and reload the data they affect.</summary>
     public void Update(Action<RulesData> change)
     {
+        // a deep copy through JSON, so undo can put the previous rules back
+        RulesData before = Newtonsoft.Json.JsonConvert.DeserializeObject<RulesData>(Newtonsoft.Json.JsonConvert.SerializeObject(Current))!;
+        Domains.UndoCapture.Remember(() => this.Replace(before));
         change(Current);
         this.Invalidate();
     }
