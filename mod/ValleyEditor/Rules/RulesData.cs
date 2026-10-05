@@ -100,6 +100,9 @@ internal sealed class RulesData
     /// <summary>A qualified item ID every cast catches instead of the game's pick, or null.</summary>
     public string? ForcedFishId { get; set; }
 
+    /// <summary>Minimum number of vanilla loot rolls in a fishing treasure chest (vanilla 1, then each extra roll has a 40% chance, 60% for golden chests).</summary>
+    public int TreasureRolls { get; set; } = 1;
+
     /// <summary>Fishing treasure chest stack multiplier.</summary>
     public int TreasureMultiplier { get; set; } = 1;
 

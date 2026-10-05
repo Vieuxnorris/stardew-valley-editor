@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { api, type Season, type World } from '../api';
+import { api, mapImageUrl, type MapRegion, type Season, type World } from '../api';
 import { FeedbackLine, NumberField, useAction } from '../components';
 import { useI18n } from '../i18n';
 
@@ -25,6 +25,7 @@ export function WorldTab({ onChanged }: { onChanged: () => void }) {
     <div class="stack">
       <DateCard {...shared} />
       <WeatherCard {...shared} />
+      <MapCard {...shared} />
       <WarpCard {...shared} />
     </div>
   );
@@ -149,7 +150,7 @@ function WarpCard({ world, setWorld, onChanged }: CardProps) {
 
   return (
     <section class="card">
-      <h3>{t('world.warp')}</h3>
+      <h3>{t('world.otherLocations')}</h3>
       <form
         class="fields"
         onSubmit={(e) => {
@@ -169,6 +170,79 @@ function WarpCard({ world, setWorld, onChanged }: CardProps) {
           {t('world.go')}
         </button>
       </form>
+      <FeedbackLine feedback={feedback} />
+    </section>
+  );
+}
+
+/** The game's world map with clickable places; clicking one teleports there. */
+function MapCard({ setWorld, onChanged }: CardProps) {
+  const { t } = useI18n();
+  const { run, feedback, busy } = useAction(onChanged);
+  const [regions, setRegions] = useState<MapRegion[] | null>(null);
+  const [regionId, setRegionId] = useState('Valley');
+  const [hover, setHover] = useState<string | null>(null);
+  // bump to reload the image and areas after a warp (the 'you are here' marker moves)
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    api<MapRegion[]>('GET', '/api/world/map').then((list) => {
+      setRegions(list);
+      if (!list.some((r) => r.id === regionId)) setRegionId(list[0]?.id ?? '');
+    });
+  }, [version]);
+
+  const region = regions?.find((r) => r.id === regionId);
+  const warp = (location: string) =>
+    run(
+      () => api<World>('POST', '/api/world/warp', { location }),
+      (w) => {
+        setWorld(w);
+        setVersion(version + 1);
+      },
+    );
+
+  return (
+    <section class="card">
+      <div class="card-header">
+        <h3>{t('world.map')}</h3>
+        {regions && regions.length > 1 && (
+          <div class="tabs compact">
+            {regions.map((r) => (
+              <button key={r.id} class={r.id === regionId ? 'active' : ''} onClick={() => setRegionId(r.id)}>
+                {t(`region.${r.id}`)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <p class="muted">{t('world.mapHint')}</p>
+      {region && (
+        <div class="world-map" style={{ aspectRatio: `${region.width} / ${region.height}` }}>
+          <img src={`${mapImageUrl(region.id)}&v=${version}`} alt={t('world.map')} />
+          {region.areas
+            .filter((a) => a.location)
+            .map((a) => (
+              <button
+                key={a.id}
+                class={`map-area ${a.current ? 'current' : ''}`}
+                style={{
+                  left: `${(a.x / region.width) * 100}%`,
+                  top: `${(a.y / region.height) * 100}%`,
+                  width: `${(a.width / region.width) * 100}%`,
+                  height: `${(a.height / region.height) * 100}%`,
+                }}
+                disabled={busy}
+                title={a.name ?? a.location ?? ''}
+                aria-label={`${t('world.go')} : ${a.name ?? a.location}`}
+                onMouseEnter={() => setHover(a.name ?? a.location)}
+                onMouseLeave={() => setHover(null)}
+                onClick={() => warp(a.location!)}
+              />
+            ))}
+          {hover && <span class="map-label">{hover}</span>}
+        </div>
+      )}
       <FeedbackLine feedback={feedback} />
     </section>
   );

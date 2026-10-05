@@ -4,6 +4,7 @@ using System.Linq;
 using StardewValley;
 using ValleyEditor.Rules;
 using ValleyEditor.Server;
+using ValleyEditor.Sprites;
 
 namespace ValleyEditor.Domains;
 
@@ -14,16 +15,20 @@ internal sealed class MonstersDomain : Domain
     private const int DisplayNameField = 14;
 
     private readonly RulesService rules;
+    private readonly ItemSprites sprites;
 
-    public MonstersDomain(GameThreadDispatcher game, EditorState state, RulesService rules)
+    public MonstersDomain(GameThreadDispatcher game, EditorState state, RulesService rules, ItemSprites sprites)
         : base(game, state)
     {
         this.rules = rules;
+        this.sprites = sprites;
     }
 
     public override void Register(Router router)
     {
         router.Get("/api/monsters", _ => this.Read(this.Snapshot));
+
+        router.Get("/api/monster-sprites/{name}", async request => new BinaryResult(await this.sprites.GetMonsterPng(request.Params["name"]), "image/png"));
 
         router.Put("/api/monsters/{name}/drops", request => this.Write(() =>
         {

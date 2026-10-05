@@ -90,9 +90,11 @@ function TreasureCard({ snapshot, setSnapshot, onChanged }: CardProps) {
   const { run, feedback, busy } = useAction(onChanged);
   const s = snapshot.settings;
   const [multiplier, setMultiplier] = useState(String(s.treasureMultiplier));
+  const [rolls, setRolls] = useState(String(s.treasureRolls));
   const [loot, setLoot] = useState<LootEntry[]>(s.treasureLoot);
   useEffect(() => {
     setMultiplier(String(s.treasureMultiplier));
+    setRolls(String(s.treasureRolls));
     setLoot(s.treasureLoot);
   }, [snapshot]);
 
@@ -103,9 +105,10 @@ function TreasureCard({ snapshot, setSnapshot, onChanged }: CardProps) {
         class="fields"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => api<FishingSnapshot>('PATCH', '/api/fishing', { treasureMultiplier: Number(multiplier) }), setSnapshot);
+          run(() => api<FishingSnapshot>('PATCH', '/api/fishing', { treasureMultiplier: Number(multiplier), treasureRolls: Number(rolls) }), setSnapshot);
         }}
       >
+        <NumberField label={t('fish.treasureRolls')} value={rolls} min={1} max={20} onInput={setRolls} />
         <NumberField label={t('fish.treasureMultiplier')} value={multiplier} min={1} max={999} onInput={setMultiplier} />
         <button type="submit" disabled={busy}>
           {t('common.apply')}
@@ -120,6 +123,7 @@ function TreasureCard({ snapshot, setSnapshot, onChanged }: CardProps) {
         />{' '}
         {t('fish.treasureReplace')}
       </label>
+      <p class="muted">{t('fish.treasureRollsHint')}</p>
       <p class="muted">{t('fish.treasureHint')}</p>
       <LootTableEditor entries={loot} onChange={setLoot} withStacks />
       <button disabled={busy} onClick={() => run(() => api<FishingSnapshot>('PUT', '/api/fishing/treasure', { entries: loot }), setSnapshot)}>

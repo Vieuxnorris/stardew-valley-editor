@@ -3,7 +3,11 @@ using System.Linq;
 using Microsoft.Xna.Framework;
 using Newtonsoft.Json.Linq;
 using StardewValley;
+using Microsoft.Xna.Framework.Graphics;
+using StardewValley.GameData.WorldMaps;
 using StardewValley.Network;
+using StardewValley.TokenizableStrings;
+using ValleyEditor.Sprites;
 using ValleyEditor.Server;
 
 namespace ValleyEditor.Domains;
@@ -14,8 +18,13 @@ internal sealed class WorldDomain : Domain
     private const string DefaultContext = "Default";
     private static readonly string[] Weathers = { Game1.weather_sunny, Game1.weather_rain, Game1.weather_lightning, Game1.weather_snow, Game1.weather_debris, Game1.weather_green_rain };
 
-    public WorldDomain(GameThreadDispatcher game, EditorState state)
-        : base(game, state) { }
+    private readonly ItemSprites sprites;
+
+    public WorldDomain(GameThreadDispatcher game, EditorState state, ItemSprites sprites)
+        : base(game, state)
+    {
+        this.sprites = sprites;
+    }
 
     public override void Register(Router router)
     {
@@ -82,6 +91,15 @@ internal sealed class WorldDomain : Domain
             });
         });
 
+        // the world map (Data/WorldMap): regions with clickable areas linked to locations
+        router.Get("/api/world/map", _ => this.Read(MapRegions));
+        router.Get("/api/world/map/{region}/image", async request =>
+        {
+            string region = request.Params["region"];
+            byte[] png = await this.sprites.RenderPng(() => ComposeMap(region));
+            return new BinaryResult(png, "image/png");
+        });
+
         router.Post("/api/world/warp", request =>
         {
             string name = request.BodyObject.Value<string>("location") ?? throw new ApiException(400, "'location' is required.");
@@ -94,6 +112,120 @@ internal sealed class WorldDomain : Domain
                 return Snapshot();
             });
         });
+    }
+
+    private static object MapRegions()
+    {
+        string? current = Game1.player.currentLocation?.Name;
+        return DataLoader.WorldMap(Game1.content)
+            .Select(pair =>
+            {
+                Rectangle bounds = MapBounds(pair.Value);
+                return new
+                {
+                    Id = pair.Key,
+                    bounds.Width,
+                    bounds.Height,
+                    Areas = pair.Value.MapAreas
+                        .Where(area => GameStateQuery.CheckConditions(area.Condition))
+                        .Select(area =>
+                        {
+                            WorldMapTooltipData? tooltip = area.Tooltips.FirstOrDefault(t => GameStateQuery.CheckConditions(t.Condition));
+                            Rectangle hit = !area.PixelArea.IsEmpty ? area.PixelArea : tooltip?.PixelArea ?? Rectangle.Empty;
+                            string[] names = area.WorldPositions
+                                .Where(p => GameStateQuery.CheckConditions(p.Condition))
+                                .SelectMany(p => p.LocationNames.Prepend(p.LocationName))
+                                .Where(n => !string.IsNullOrEmpty(n))
+                                .Distinct()
+                                .ToArray();
+                            return new
+                            {
+                                area.Id,
+                                Name = tooltip?.Text is { Length: > 0 } text ? TokenParser.ParseText(text) : null,
+                                hit.X,
+                                hit.Y,
+                                hit.Width,
+                                hit.Height,
+                                Location = names.FirstOrDefault(n => Game1.getLocationFromName(n) != null),
+                                Current = current != null && names.Contains(current),
+                            };
+                        })
+                        .Where(a => a.Width > 0 && a.Height > 0)
+                        .ToArray(),
+                };
+            })
+            .ToArray();
+    }
+
+    /// <summary>The map size: the union of the base textures' areas.</summary>
+    private static Rectangle MapBounds(WorldMapRegionData region)
+    {
+        Rectangle bounds = Rectangle.Empty;
+        foreach (WorldMapTextureData texture in region.BaseTexture.Where(t => GameStateQuery.CheckConditions(t.Condition)))
+        {
+            Rectangle area = texture.MapPixelArea;
+            if (area.IsEmpty)
+            {
+                Rectangle source = texture.SourceRect;
+                if (source.IsEmpty)
+                    source = Game1.content.Load<Texture2D>(texture.Texture).Bounds;
+                area = new Rectangle(0, 0, source.Width, source.Height);
+            }
+            bounds = bounds.IsEmpty ? area : Rectangle.Union(bounds, area);
+        }
+        return bounds;
+    }
+
+    /// <summary>Draw a region like the game's map page: base textures, then the area textures whose conditions pass (restored buildings, etc.).</summary>
+    private static (Color[] Pixels, int Width, int Height) ComposeMap(string regionId)
+    {
+        if (!DataLoader.WorldMap(Game1.content).TryGetValue(regionId, out WorldMapRegionData? region))
+            throw new ApiException(404, $"No world map region '{regionId}'.");
+
+        Rectangle bounds = MapBounds(region);
+        var canvas = new Color[bounds.Width * bounds.Height];
+
+        foreach (WorldMapTextureData texture in region.BaseTexture.Where(t => GameStateQuery.CheckConditions(t.Condition)))
+            Draw(canvas, bounds, texture, Rectangle.Empty);
+        foreach (WorldMapAreaData area in region.MapAreas.Where(a => GameStateQuery.CheckConditions(a.Condition)))
+        {
+            foreach (WorldMapTextureData texture in area.Textures.Where(t => GameStateQuery.CheckConditions(t.Condition)))
+                Draw(canvas, bounds, texture, area.PixelArea);
+        }
+        return (canvas, bounds.Width, bounds.Height);
+    }
+
+    /// <summary>Alpha-blend a map texture onto the canvas (premultiplied, like game textures), scaling with nearest-neighbour if needed.</summary>
+    private static void Draw(Color[] canvas, Rectangle bounds, WorldMapTextureData data, Rectangle defaultArea)
+    {
+        Texture2D texture = Game1.content.Load<Texture2D>(data.Texture);
+        Rectangle source = data.SourceRect.IsEmpty ? texture.Bounds : data.SourceRect;
+        Rectangle dest = !data.MapPixelArea.IsEmpty ? data.MapPixelArea : !defaultArea.IsEmpty ? defaultArea : new Rectangle(0, 0, source.Width, source.Height);
+        var (pixels, width, height) = ItemSprites.ReadPixels(texture, source);
+
+        for (int y = 0; y < dest.Height; y++)
+        {
+            int cy = dest.Y + y - bounds.Y;
+            if (cy < 0 || cy >= bounds.Height)
+                continue;
+            int sy = y * height / dest.Height;
+            for (int x = 0; x < dest.Width; x++)
+            {
+                int cx = dest.X + x - bounds.X;
+                if (cx < 0 || cx >= bounds.Width)
+                    continue;
+                Color src = pixels[sy * width + x * width / dest.Width];
+                if (src.A == 0)
+                    continue;
+                ref Color dst = ref canvas[cy * bounds.Width + cx];
+                float keep = 1 - src.A / 255f;
+                dst = new Color(
+                    (byte)Math.Min(255, src.R + dst.R * keep),
+                    (byte)Math.Min(255, src.G + dst.G * keep),
+                    (byte)Math.Min(255, src.B + dst.B * keep),
+                    (byte)Math.Min(255, src.A + dst.A * keep));
+            }
+        }
     }
 
     /// <summary>Change today's weather flags, as at the start of a day (Game1.ApplyWeatherForNewDay).</summary>

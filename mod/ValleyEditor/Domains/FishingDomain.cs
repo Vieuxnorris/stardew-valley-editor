@@ -30,6 +30,7 @@ internal sealed class FishingDomain : Domain
             int? perCatch = OptInt(body, "fishPerCatch", 1, 999);
             int? quality = OptInt(body, "fishQuality", -1, 4);
             int? treasureMultiplier = OptInt(body, "treasureMultiplier", 1, 999);
+            int? treasureRolls = OptInt(body, "treasureRolls", 1, 20); // the chest shows 36 slots; rolls can add several items each
             bool? maxSize = OptBool(body, "fishMaxSize");
             bool? replace = OptBool(body, "treasureReplaceVanilla");
             if (quality == 3)
@@ -49,6 +50,7 @@ internal sealed class FishingDomain : Domain
                     r.FishPerCatch = perCatch ?? r.FishPerCatch;
                     r.FishQuality = quality ?? r.FishQuality;
                     r.TreasureMultiplier = treasureMultiplier ?? r.TreasureMultiplier;
+                    r.TreasureRolls = treasureRolls ?? r.TreasureRolls;
                     r.FishMaxSize = maxSize ?? r.FishMaxSize;
                     r.TreasureReplaceVanilla = replace ?? r.TreasureReplaceVanilla;
                     if (setForced)
@@ -163,6 +165,7 @@ internal sealed class FishingDomain : Domain
                 r.FishMaxSize,
                 r.ForcedFishId,
                 r.TreasureMultiplier,
+                r.TreasureRolls,
                 r.TreasureReplaceVanilla,
                 TreasureLoot = r.TreasureLoot.Select(LootJson.From),
             },

@@ -179,6 +179,16 @@ export interface Villager {
   location: string | null;
 }
 
+export const monsterSpriteUrl = (name: string) => `/api/monster-sprites/${encodeURIComponent(name)}?token=${token ?? ''}`;
+export const mapImageUrl = (region: string) => `/api/world/map/${encodeURIComponent(region)}/image?token=${token ?? ''}`;
+
+export interface MapRegion {
+  id: string;
+  width: number;
+  height: number;
+  areas: { id: string; name: string | null; x: number; y: number; width: number; height: number; location: string | null; current: boolean }[];
+}
+
 export const portraitUrl = (name: string) => `/api/portraits/${encodeURIComponent(name)}?token=${token ?? ''}`;
 
 export type MineBand = 'copper' | 'iron' | 'gold' | 'iridium';
@@ -243,6 +253,7 @@ export interface FishingSnapshot {
     fishMaxSize: boolean;
     forcedFishId: string | null;
     treasureMultiplier: number;
+    treasureRolls: number;
     treasureReplaceVanilla: boolean;
     treasureLoot: LootEntry[];
   };

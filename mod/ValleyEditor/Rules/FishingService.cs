@@ -20,18 +20,51 @@ internal sealed class FishingService
 
     private static IMonitor? monitor;
 
+    /// <summary>Loot rolls done in the treasure chest being filled.</summary>
+    private static int treasureRollsDone;
+
+    /// <summary>How many decay constants the transpiler replaced (2 expected: regular and golden chests).</summary>
+    private static int decayConstantsPatched;
+
     public FishingService(IModHelper helper, Harmony harmony, IMonitor log)
     {
         monitor = log;
         harmony.Patch(
             AccessTools.Method(typeof(FishingRod), nameof(FishingRod.openTreasureMenuEndFunction)),
-            postfix: new HarmonyMethod(typeof(FishingService), nameof(AfterOpenTreasureMenu)));
+            prefix: new HarmonyMethod(typeof(FishingService), nameof(BeforeOpenTreasureMenu)),
+            postfix: new HarmonyMethod(typeof(FishingService), nameof(AfterOpenTreasureMenu)),
+            transpiler: new HarmonyMethod(typeof(FishingService), nameof(TranspileTreasureRolls)));
+        if (decayConstantsPatched != 2)
+            log.Log($"Treasure roll patch matched {decayConstantsPatched} of the 2 expected constants; the chest item count rule may not work with this game version.", LogLevel.Warn);
         harmony.Patch(
             AccessTools.Method(typeof(FishingRod), nameof(FishingRod.pullFishFromWater)),
             prefix: new HarmonyMethod(typeof(FishingService), nameof(BeforePullFishFromWater)));
         harmony.Patch(
             AccessTools.Method(typeof(GameLocation), nameof(GameLocation.getFish)),
             postfix: new HarmonyMethod(typeof(FishingService), nameof(AfterGetFish)));
+    }
+
+    /// <summary>Merge identical stacks, then drop at the player's feet whatever still doesn't fit in the chest's 36 slots.</summary>
+    private static void FitInChest(IList<Item> items)
+    {
+        for (int i = 0; i < items.Count; i++)
+        {
+            for (int j = items.Count - 1; j > i; j--)
+            {
+                if (items[i].canStackWith(items[j]) && items[i].Stack + items[j].Stack <= items[i].maximumStackSize())
+                {
+                    items[i].Stack += items[j].Stack;
+                    items.RemoveAt(j);
+                }
+            }
+        }
+
+        while (items.Count > MaxChestSlots)
+        {
+            Item extra = items[^1];
+            items.RemoveAt(items.Count - 1);
+            Game1.createItemDebris(extra, Game1.player.getStandingPosition(), Game1.player.FacingDirection);
+        }
     }
 
     /// <summary>The largest size (inches) of a fish in Data/Fish, if it's a rod fish.</summary>
@@ -75,6 +108,33 @@ internal sealed class FishingService
             __result = fish;
     }
 
+    /// <summary>
+    /// The chest loop is `while (random &lt;= chance) { chance *= golden ? 0.6f : 0.4f; ...add loot... }` with chance starting at 1.
+    /// Route both constants through <see cref="TreasureDecay"/>, which keeps the chance at 1 until the minimum rolls are done.
+    /// </summary>
+    private static IEnumerable<CodeInstruction> TranspileTreasureRolls(IEnumerable<CodeInstruction> instructions)
+    {
+        var decay = AccessTools.Method(typeof(FishingService), nameof(TreasureDecay));
+        foreach (CodeInstruction instruction in instructions)
+        {
+            yield return instruction;
+            if (instruction.opcode == System.Reflection.Emit.OpCodes.Ldc_R4 && instruction.operand is float value && (value == 0.4f || value == 0.6f))
+            {
+                decayConstantsPatched++;
+                yield return new CodeInstruction(System.Reflection.Emit.OpCodes.Call, decay);
+            }
+        }
+    }
+
+    private static void BeforeOpenTreasureMenu() => treasureRollsDone = 0;
+
+    /// <summary>The factor applied to the chance of another roll: 1 (certain) until the minimum is reached, then vanilla.</summary>
+    private static float TreasureDecay(float vanilla)
+    {
+        treasureRollsDone++;
+        return treasureRollsDone < RulesService.Current.TreasureRolls ? 1f : vanilla;
+    }
+
     /// <summary>Fill the fishing treasure chest right after the game opens it (FishingRod.openTreasureMenuEndFunction ends by setting the menu).</summary>
     private static void AfterOpenTreasureMenu()
     {
@@ -85,7 +145,11 @@ internal sealed class FishingService
         }
         RulesData rules = RulesService.Current;
         if (rules.TreasureMultiplier <= 1 && rules.TreasureLoot.Count == 0)
+        {
+            FitInChest(menu.ItemsToGrabMenu.actualInventory);
+            monitor?.Log($"Treasure chest: {treasureRollsDone} rolls, {menu.ItemsToGrabMenu.actualInventory.Count} items.", LogLevel.Trace);
             return;
+        }
 
         try
         {
@@ -113,7 +177,8 @@ internal sealed class FishingService
                         item.Stack = (int)Math.Min(item.maximumStackSize(), (long)item.Stack * rules.TreasureMultiplier);
                 }
             }
-            monitor?.Log($"Treasure chest rules applied: ×{rules.TreasureMultiplier}, {rules.TreasureLoot.Count} table entries, {items.Count} items now.", LogLevel.Trace);
+            FitInChest(items);
+            monitor?.Log($"Treasure chest rules applied: {treasureRollsDone} rolls, ×{rules.TreasureMultiplier}, {rules.TreasureLoot.Count} table entries, {items.Count} items now.", LogLevel.Trace);
         }
         catch (Exception ex)
         {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { api, type LootEntry, type Monster } from '../api';
+import { api, monsterSpriteUrl, type LootEntry, type Monster } from '../api';
 import { FeedbackLine, ItemIcon, useAction } from '../components';
 import { useI18n } from '../i18n';
 import { LootTableEditor } from './LootTableEditor';
@@ -28,12 +28,11 @@ export function MonstersTab({ onChanged }: { onChanged: () => void }) {
         <input type="search" placeholder={t('mon.search')} value={search} onInput={(e) => setSearch((e.target as HTMLInputElement).value)} aria-label={t('mon.search')} />
       </section>
       <div class="monster-layout">
-        <ul class="monster-list">
+        <ul class="monster-grid">
           {visible.map((m) => (
             <li key={m.key}>
-              <button class={`catalog-item ${m.key === selected ? 'active' : ''}`} onClick={() => setSelected(m.key)}>
-                <span>{m.displayName}</span>
-                {m.edited && <span class="badge">{t('mon.edited')}</span>}
+              <button class={`monster-tile ${m.key === selected ? 'active' : ''} ${m.edited ? 'edited' : ''}`} onClick={() => setSelected(m.key)} title={m.displayName} aria-label={m.displayName}>
+                <MonsterIcon monster={m} />
               </button>
             </li>
           ))}
@@ -54,7 +53,10 @@ function MonsterEditor({ monster, setMonsters, onChanged }: { monster: Monster; 
   return (
     <section class="card">
       <div class="card-header">
-        <h3>{monster.displayName}</h3>
+        <h3 class="inline">
+          <MonsterIcon monster={monster} size={48} /> {monster.displayName}
+          {monster.edited && <span class="badge">{t('mon.edited')}</span>}
+        </h3>
         {monster.edited && (
           <button class="secondary" disabled={busy} onClick={() => run(() => api<Monster[]>('DELETE', path), setMonsters)}>
             {t('mon.reset')}
@@ -78,4 +80,11 @@ function MonsterEditor({ monster, setMonsters, onChanged }: { monster: Monster; 
       <FeedbackLine feedback={feedback} />
     </section>
   );
+}
+
+/** A monster's sprite; falls back to its name when the game has no sprite under that name. */
+function MonsterIcon({ monster, size = 40 }: { monster: Monster; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <span class="monster-fallback">{monster.displayName}</span>;
+  return <img class="icon" src={monsterSpriteUrl(monster.key)} alt={monster.displayName} width={size} height={size} loading="lazy" onError={() => setFailed(true)} />;
 }

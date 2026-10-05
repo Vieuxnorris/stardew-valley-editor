@@ -47,13 +47,13 @@ internal sealed class ModEntry : Mod
             new PlayerDomain(this.dispatcher, this.state),
             new InventoryDomain(this.dispatcher, this.state),
             items,
-            new WorldDomain(this.dispatcher, this.state),
+            new WorldDomain(this.dispatcher, this.state, sprites),
             new ProgressionDomain(this.dispatcher, this.state),
             new QuestsDomain(this.dispatcher, this.state),
             new NpcsDomain(this.dispatcher, this.state, sprites),
             new RulesDomain(this.dispatcher, this.state, rules, cheats),
             new FishingDomain(this.dispatcher, this.state, rules),
-            new MonstersDomain(this.dispatcher, this.state, rules),
+            new MonstersDomain(this.dispatcher, this.state, rules, sprites),
         };
         foreach (Domain domain in domains)
             domain.Register(router);
