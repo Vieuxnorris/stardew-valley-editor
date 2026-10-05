@@ -378,3 +378,19 @@ export interface Animal {
 
 export const buildingSpriteUrl = (id: string, version: string) => `/api/building-sprites/${encodeURIComponent(id)}?token=${token ?? ''}&v=${encodeURIComponent(version)}`;
 export const animalSpriteUrl = (id: string, version: string) => `/api/animal-sprites/${encodeURIComponent(id)}?token=${token ?? ''}&v=${encodeURIComponent(version)}`;
+
+export interface PetInfo {
+  id: string;
+  name: string;
+  type: string;
+  typeName: string;
+  locationName: string | null;
+  friendship: number;
+  maxFriendship: number;
+  pettedToday: boolean;
+  timesPet: number;
+  hasBowl: boolean;
+  bowlWatered: boolean;
+}
+
+export const petSpriteUrl = (id: string) => `/api/pet-sprites/${encodeURIComponent(id)}?token=${token ?? ''}`;
