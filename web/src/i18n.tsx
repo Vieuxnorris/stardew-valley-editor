@@ -289,7 +289,7 @@ const fr = {
   'farm.houseCancel': "Annuler l’agrandissement",
   'farm.houseHint': "Le jeu reconstruit la maison pendant la nuit (meubles déplacés, nouvelle carte) : l’agrandissement est prêt au réveil.",
   'farm.buildings': "Bâtiments",
-  'farm.buildingsHint': "Terminez une construction tout de suite, ou améliorez un bâtiment instantanément et gratuitement.",
+  'farm.buildingsHint': "La ferme telle qu’elle est maintenant. Cliquez sur un bâtiment pour le modifier (terminer, améliorer, apparence, porte des animaux) ; double-cliquez ou « Entrer » pour voir son intérieur. Les sorties (portes, escaliers) sont en bleu ; coffres, machines et animaux sont cliquables. Les chantiers sont en pointillés.",
   'farm.animals': "animaux",
   'farm.underConstruction': "En construction",
   'farm.upgrading': "Amélioration en",
@@ -343,7 +343,7 @@ const fr = {
   'farm.skin': "Apparence",
   'farm.skinDefault': "Par défaut",
   'farm.animalDoor': "Porte des animaux ouverte",
-  'farm.autoRefresh': "Auto (10 s)",
+  'farm.autoRefresh': "Auto (5 s)",
   'farm.levels': "Niveaux",
   'farm.enter': "Entrer",
   'farm.insideOf': "Intérieur de",
@@ -393,7 +393,7 @@ const fr = {
   'machine.input': "Ingrédient",
   'machine.output': "Production",
   'machine.finish': "Terminer maintenant",
-  'machine.setOutput': "Changer la production (ID d’objet)",
+  'machine.setOutput': "Production",
   'machine.empty': "Vider",
   'machine.speed': "Vitesse de toutes les machines de ce type",
   'machine.speedGlobal': "Règle globale",
@@ -721,7 +721,7 @@ const en: Record<Key, string> = {
   'farm.houseCancel': "Cancel the upgrade",
   'farm.houseHint': "The game rebuilds the house overnight (furniture moved, new map): the upgrade is ready when you wake up.",
   'farm.buildings': "Buildings",
-  'farm.buildingsHint': "Finish a construction right away, or upgrade a building instantly and for free.",
+  'farm.buildingsHint': "The farm as it is right now. Click a building to edit it (finish, upgrade, look, animal door); double-click or \"Go inside\" to see its interior. Exits (doors, stairs) are blue; chests, machines and animals are clickable. Construction sites are dashed.",
   'farm.animals': "animals",
   'farm.underConstruction': "Under construction",
   'farm.upgrading': "Upgrading to",
@@ -775,7 +775,7 @@ const en: Record<Key, string> = {
   'farm.skin': "Appearance",
   'farm.skinDefault': "Default",
   'farm.animalDoor': "Animal door open",
-  'farm.autoRefresh': "Auto (10 s)",
+  'farm.autoRefresh': "Auto (5 s)",
   'farm.levels': "Levels",
   'farm.enter': "Go inside",
   'farm.insideOf': "Inside of",
@@ -825,7 +825,7 @@ const en: Record<Key, string> = {
   'machine.input': "Input",
   'machine.output': "Output",
   'machine.finish': "Finish now",
-  'machine.setOutput': "Change the output (item ID)",
+  'machine.setOutput': "Output",
   'machine.empty': "Empty",
   'machine.speed': "Speed of every machine of this type",
   'machine.speedGlobal': "Global rule",
@@ -869,6 +869,9 @@ export type Lang = 'fr' | 'en';
 const LANG_KEY = 'valley-editor-lang';
 
 function initialLang(): Lang {
+  // ?lang=en|fr in the URL wins (direct links, screenshots)
+  const fromUrl = new URLSearchParams(location.search).get('lang');
+  if (fromUrl === 'fr' || fromUrl === 'en') return fromUrl;
   try {
     const stored = localStorage.getItem(LANG_KEY);
     if (stored === 'fr' || stored === 'en') return stored;

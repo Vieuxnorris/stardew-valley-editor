@@ -24,7 +24,11 @@ type Tab = (typeof TABS)[number];
 export function App() {
   const { t, lang, setLang } = useI18n();
   const [connection, setConnection] = useState<Connection>({ kind: 'loading' });
-  const [tab, setTab] = useState<Tab>('player');
+  // ?tab=farm opens a tab directly
+  const [tab, setTab] = useState<Tab>(() => {
+    const fromUrl = new URLSearchParams(location.search).get('tab');
+    return (TABS as readonly string[]).includes(fromUrl ?? '') ? (fromUrl as Tab) : 'player';
+  });
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [undoing, setUndoing] = useState(false);
