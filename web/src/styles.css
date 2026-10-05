@@ -1043,3 +1043,22 @@ progress {
   gap: 6px;
   margin: 0;
 }
+
+.exit-area {
+  border: 2px dashed #7fd3ff;
+  background: rgba(127, 211, 255, 0.18);
+}
+
+.exit-area:hover,
+.exit-area:focus-visible {
+  background: rgba(127, 211, 255, 0.45);
+  border-style: solid;
+}
+
+.exits {
+  margin-top: 12px;
+}
+
+.exits h5 {
+  margin: 0 0 4px;
+}

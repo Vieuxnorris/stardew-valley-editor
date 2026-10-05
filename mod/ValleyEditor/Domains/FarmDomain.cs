@@ -230,12 +230,32 @@ internal sealed class FarmDomain : Domain
         if (fridge is { } f)
             chests.Add(new { Id = $"{name}@fridge", Name = (string?)null, X = f.X * tile, Y = f.Y * tile - tile, Width = tile, Height = tile * 2 });
 
+        // the ways out of here (stairs, doors, map edges), merged per destination, so the view can follow them (house → cellar...)
+        var exits = new Dictionary<string, (GameLocation Target, Rectangle Area)>();
+        void AddExit(string? targetName, int tx, int ty)
+        {
+            if (string.IsNullOrEmpty(targetName) || Game1.getLocationFromName(targetName) is not { } target || target.NameOrUniqueName == name)
+                return;
+            tx = Math.Clamp(tx, 0, size.X / tile - 1); // edge warps sit just outside the map
+            ty = Math.Clamp(ty, 0, size.Y / tile - 1);
+            var area = new Rectangle(tx * tile, ty * tile, tile, tile);
+            string key = target.NameOrUniqueName;
+            exits[key] = exits.TryGetValue(key, out var existing) ? (target, Rectangle.Union(existing.Area, area)) : (target, area);
+        }
+        foreach (Warp warp in location.warps)
+            AddExit(warp.TargetName, warp.X, warp.Y);
+        foreach ((Point door, string target) in location.doors.Pairs)
+            AddExit(target, door.X, door.Y);
+
         return new
         {
             Location = name,
             DisplayName = location.DisplayName ?? location.Name,
             Width = size.X,
             Height = size.Y,
+            Exits = exits.Values
+                .Select(e => new { Location = e.Target.NameOrUniqueName, DisplayName = e.Target.DisplayName ?? e.Target.Name, e.Area.X, e.Area.Y, e.Area.Width, e.Area.Height })
+                .ToArray(),
             Parent = parent.Building is null ? null : new { Location = parent.Location.NameOrUniqueName, DisplayName = parent.Location.DisplayName ?? parent.Location.Name, BuildingId = parent.Id },
             Chests = chests,
             Machines = location.objects.Pairs

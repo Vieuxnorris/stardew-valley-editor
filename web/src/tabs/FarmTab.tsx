@@ -175,6 +175,7 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
   const [auto, setAuto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
+  const [names, setNames] = useState<Record<string, string>>({});
   const current = path[path.length - 1];
 
   useEffect(() => {
@@ -183,6 +184,7 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
         setView(v);
         setError(null);
         setRefreshedAt(new Date().toLocaleTimeString());
+        setNames((n) => ({ ...n, [v.location]: v.displayName, ...Object.fromEntries(v.exits.map((e) => [e.location, e.displayName])) }));
       },
       (e) => setError(e.message),
     );
@@ -207,6 +209,11 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
     setPath(newPath);
     setSelected(null);
     setView(null);
+  };
+
+  const follow = (location: string) => {
+    const index = path.indexOf(location);
+    go(index >= 0 ? path.slice(0, index + 1) : [...path, location]);
   };
 
   const buildings = farm.buildings.filter((b) => b.location === current);
@@ -251,7 +258,7 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
               {i > 0 && ' › '}
               {i < path.length - 1 ? (
                 <button class="link" onClick={() => go(path.slice(0, i + 1))}>
-                  {i === 0 ? (farm.buildingLocations.find((l) => l.location === loc)?.displayName ?? loc) : (farm.buildings.find((b) => b.interior === loc)?.name ?? loc)}
+                  {names[loc] ?? farm.buildingLocations.find((l) => l.location === loc)?.displayName ?? farm.buildings.find((b) => b.interior === loc)?.name ?? loc}
                 </button>
               ) : (
                 <strong>{view?.displayName ?? loc}</strong>
@@ -283,6 +290,18 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
               .map((b) =>
                 spot(`b-${b.id}`, 'building', b.id, b.name, b.daysOfConstructionLeft > 0 ? b.footprint : b.sprite, b.daysOfConstructionLeft > 0 ? 'construction' : '', b.interior ? () => go([...path, b.interior!]) : undefined),
               )}
+            {view.exits.map((e) => (
+              <button
+                key={`e-${e.location}`}
+                class="map-area exit-area"
+                style={box(e)}
+                title={`→ ${e.displayName}`}
+                aria-label={`${t('farm.goTo')} ${e.displayName}`}
+                onMouseEnter={() => setHover(`→ ${e.displayName}`)}
+                onMouseLeave={() => setHover(null)}
+                onClick={() => follow(e.location)}
+              />
+            ))}
             {view.chests.map((c) => spot(`c-${c.id}`, 'chest', c.id, c.name ?? t('chests.fridge'), c))}
             {view.machines.map((m) => spot(`m-${m.id}`, 'machine', m.id, `${m.name}${m.ready ? ` — ${t('machine.ready')}` : m.working ? ` — ${t('machine.working')}` : ''}`, m, m.ready ? 'ready' : m.working ? 'working' : ''))}
             {view.animals.map((a) => spot(`a-${a.id}`, 'animal', a.id, a.name, a))}
@@ -313,6 +332,18 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
             <AnimalPanel key={selected.id} id={selected.id} version={version} onChanged={onChanged} />
           ) : (
             <p class="muted">{t('farm.pickBuilding')}</p>
+          )}
+          {view && view.exits.length > 0 && (
+            <div class="exits">
+              <h5>{t('farm.exits')}</h5>
+              <div class="fields">
+                {view.exits.map((e) => (
+                  <button key={e.location} class="secondary small" onClick={() => follow(e.location)}>
+                    🚪 {e.displayName}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

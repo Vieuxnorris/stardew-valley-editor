@@ -421,6 +421,7 @@ export interface LocationView {
   width: number;
   height: number;
   parent: { location: string; displayName: string; buildingId: string } | null;
+  exits: { location: string; displayName: string; x: number; y: number; width: number; height: number }[];
   chests: { id: string; name: string | null; x: number; y: number; width: number; height: number }[];
   animals: { id: string; name: string; x: number; y: number; width: number; height: number }[];
   machines: { id: string; name: string; x: number; y: number; width: number; height: number; working: boolean; ready: boolean }[];
