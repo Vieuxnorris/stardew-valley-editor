@@ -218,6 +218,8 @@ export interface Rules {
   freeBuild: boolean;
   instantBuild: boolean;
   freeCrafting: boolean;
+  infiniteReach: boolean;
+  placeAnywhere: boolean;
   speedBonus: number;
   magnetRadiusBonus: number;
   luckBonus: number;
@@ -468,6 +470,15 @@ export interface MachineInfo {
   speed: number;
   customSpeed: boolean;
   globalSpeed: number;
+  ownRule: OutputRule | null;
+  typeRule: OutputRule | null;
+  possibleOutputs: { id: string; name: string }[];
+}
+
+export interface OutputRule {
+  itemId: string | null;
+  stack: number | null;
+  quality: number | null;
 }
 
 export interface AnimalSpecies {

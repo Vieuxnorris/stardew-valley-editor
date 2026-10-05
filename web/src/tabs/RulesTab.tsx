@@ -273,6 +273,8 @@ function OpCard({ snapshot, setSnapshot, onChanged }: CardProps) {
           {toggle('freeBuild')}
           {toggle('instantBuild')}
           {toggle('freeCrafting')}
+          {toggle('infiniteReach')}
+          {toggle('placeAnywhere')}
           <p class="muted">{t('op.buildHint')}</p>
         </fieldset>
       </div>
