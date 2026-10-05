@@ -37,3 +37,8 @@ Raison : SMAPI déjà installé, code du jeu lisible en C#, live sans quitter le
 - Gotcha : `NetIntHashSet` n'a pas d'`AddRange` et `NetList` n'a pas de `RemoveAll` : boucler.
 - Faits joueur : `gainExperience` remplit `newLevels` (les écrans de montée de niveau s'affichent au coucher). `LevelUpMenu.RevalidateHealth(farmer)` recalcule les PV max (combat + Fighter/Defender). Les noix dorées sont dans `Game1.netWorldState.Value.GoldenWalnuts`, l'XP de maîtrise dans `Game1.stats["MasteryExp"]`.
 - 2026-10-05 — Phase 2 codée (joueur complet, inventaire, catalogue avec icônes PNG). En attente du test en jeu.
+- 2026-10-05 ~16:50 — **INCIDENT** : `Mods/` ne contient plus que ValleyEditor, le zip Quantium et `vortex.deployment.json`. SMAPI n'a chargé qu'un seul mod. Dernière modification de `Mods/` : 16:34:06.
+  - Vortex déploie en `symlink_activator`, avec le staging dans `%APPDATA%\Vortex\stardewvalley\mods`. Ce staging est intact (69 mods, 61 Mo) : seuls les liens ont disparu. Réparation : Vortex → Deploy.
+  - Cause inconnue. Nos seules suppressions dans `Mods/` visaient `Mods/ValleyEditor/wwwroot`, après 16:50. ModBuildConfig ne déploie que dans `Mods/ValleyEditor`. À clarifier avec Julien (purge Vortex ?).
+  - Impact : seule la save Lab a été sauvée sans mods (16:45). Les autres saves n'ont pas été modifiées depuis septembre. Après le redéploiement, restaurer Lab depuis la copie intacte.
+- Constat catalogue : 2 446 items, tous du jeu de base (normal, aucun mod chargé). La détection du mod d'origine reste à tester avec les mods.
