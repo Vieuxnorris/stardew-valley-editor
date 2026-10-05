@@ -25,7 +25,8 @@ internal sealed class WebServer : IDisposable
 
     private static readonly JsonSerializerSettings JsonSettings = new()
     {
-        ContractResolver = new CamelCasePropertyNamesContractResolver(),
+        // camelCase properties, but keep dictionary keys as they are (monster names, seed IDs...)
+        ContractResolver = new DefaultContractResolver { NamingStrategy = new CamelCaseNamingStrategy { ProcessDictionaryKeys = false } },
         NullValueHandling = NullValueHandling.Include,
     };
 

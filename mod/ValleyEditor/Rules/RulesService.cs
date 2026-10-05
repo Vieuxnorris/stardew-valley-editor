@@ -92,8 +92,8 @@ internal sealed class RulesService
 
     private void Invalidate()
     {
-        foreach (string asset in EditedAssets)
-            this.helper.GameContent.InvalidateCache(asset);
+        // match every locale: the game loads e.g. Data/Monsters.fr-FR, which InvalidateCache("Data/Monsters") misses
+        this.helper.GameContent.InvalidateCache(asset => EditedAssets.Any(name => asset.NameWithoutLocale.IsEquivalentTo(name)));
     }
 
     private void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
