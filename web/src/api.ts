@@ -139,3 +139,32 @@ export interface Facets {
   types: { id: string; count: number }[];
   mods: { id: string; name: string | null; count: number }[];
 }
+
+export type Season = 'spring' | 'summer' | 'fall' | 'winter';
+
+export interface World {
+  day: number;
+  season: Season;
+  year: number;
+  time: number;
+  daysPlayed: number;
+  weathers: string[];
+  weather: { context: string; today: string; tomorrow: string }[];
+  currentLocation: string | null;
+  locations: { name: string; displayName: string }[];
+}
+
+export interface Progression {
+  unlocks: { id: string; value: boolean }[];
+  mines: { minesLevel: number; skullCavernLevel: number };
+  communityCenter: { area: number; name: string; complete: boolean }[];
+  museum: { donated: number; donatable: number };
+}
+
+export interface Quest {
+  index: number;
+  id: string | null;
+  name: string;
+  completed: boolean;
+  daysLeft: number | null;
+}

@@ -38,6 +38,9 @@ internal sealed class ModEntry : Mod
             new PlayerDomain(this.dispatcher, this.state),
             new InventoryDomain(this.dispatcher, this.state),
             items,
+            new WorldDomain(this.dispatcher, this.state),
+            new ProgressionDomain(this.dispatcher, this.state),
+            new QuestsDomain(this.dispatcher, this.state),
         };
         foreach (Domain domain in domains)
             domain.Register(router);

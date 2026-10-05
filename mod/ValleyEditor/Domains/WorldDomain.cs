@@ -1,0 +1,150 @@
+using System;
+using System.Linq;
+using Microsoft.Xna.Framework;
+using Newtonsoft.Json.Linq;
+using StardewValley;
+using StardewValley.Network;
+using ValleyEditor.Server;
+
+namespace ValleyEditor.Domains;
+
+/// <summary>Date, time, weather and teleporting. Mirrors the game's own debug commands (DebugCommands.cs).</summary>
+internal sealed class WorldDomain : Domain
+{
+    private const string DefaultContext = "Default";
+    private static readonly string[] Weathers = { Game1.weather_sunny, Game1.weather_rain, Game1.weather_lightning, Game1.weather_snow, Game1.weather_debris, Game1.weather_green_rain };
+
+    public WorldDomain(GameThreadDispatcher game, EditorState state)
+        : base(game, state) { }
+
+    public override void Register(Router router)
+    {
+        router.Get("/api/world", _ => this.Read(Snapshot));
+
+        router.Patch("/api/world", request =>
+        {
+            JObject body = request.BodyObject;
+            int? day = OptInt(body, "day", 1, 28);
+            int? year = OptInt(body, "year", 1, 999);
+            int? time = OptInt(body, "time", 600, 2550);
+            Season? season = null;
+            if (body.Value<string>("season") is { } seasonName)
+                season = Enum.TryParse(seasonName, ignoreCase: true, out Season parsed) && Enum.IsDefined(parsed)
+                    ? parsed
+                    : throw new ApiException(400, "'season' must be one of: spring, summer, fall, winter.");
+            if (time.HasValue && (time.Value % 100 >= 60 || time.Value % 10 != 0))
+                throw new ApiException(400, "'time' uses the game's HHMM format in 10-minute steps, e.g. 630 or 1450.");
+
+            return this.Write(() =>
+            {
+                if (year.HasValue)
+                    Game1.year = year.Value;
+                if (season.HasValue && season.Value != Game1.season)
+                {
+                    Game1.season = season.Value;
+                    Game1.setGraphicsForSeason();
+                }
+                if (day.HasValue)
+                    Game1.dayOfMonth = day.Value;
+                if (day.HasValue || season.HasValue || year.HasValue)
+                    Game1.stats.DaysPlayed = (uint)(Game1.seasonIndex * 28 + Game1.dayOfMonth + (Game1.year - 1) * 4 * 28);
+                if (time.HasValue)
+                {
+                    Game1.timeOfDay = time.Value;
+                    Game1.outdoorLight = Color.White;
+                }
+                return Snapshot();
+            });
+        });
+
+        router.Put("/api/world/weather/{context}", request =>
+        {
+            string context = request.Params["context"];
+            JObject body = request.BodyObject;
+            string? today = ParseWeather(body, "today");
+            string? tomorrow = ParseWeather(body, "tomorrow");
+
+            return this.Write(() =>
+            {
+                if (!Game1.netWorldState.Value.LocationWeather.ContainsKey(context))
+                    throw new ApiException(404, $"Unknown location context '{context}'.");
+                LocationWeather weather = Game1.netWorldState.Value.GetWeatherForLocation(context);
+
+                if (today != null)
+                    SetToday(context, weather, today);
+                if (tomorrow != null)
+                {
+                    weather.WeatherForTomorrow = tomorrow;
+                    if (context == DefaultContext)
+                        Game1.netWorldState.Value.WeatherForTomorrow = Game1.weatherForTomorrow = tomorrow;
+                }
+                return Snapshot();
+            });
+        });
+
+        router.Post("/api/world/warp", request =>
+        {
+            string name = request.BodyObject.Value<string>("location") ?? throw new ApiException(400, "'location' is required.");
+            return this.Write(() =>
+            {
+                GameLocation location = Game1.getLocationFromName(name) ?? throw new ApiException(404, $"Unknown location '{name}'.");
+                int x = 0, y = 0;
+                Utility.getDefaultWarpLocation(location.Name, ref x, ref y);
+                Game1.warpFarmer(new LocationRequest(location.NameOrUniqueName, location.uniqueName.Value != null, location), x, y, 2);
+                return Snapshot();
+            });
+        });
+    }
+
+    /// <summary>Change today's weather flags, as at the start of a day (Game1.ApplyWeatherForNewDay).</summary>
+    private static void SetToday(string context, LocationWeather weather, string value)
+    {
+        weather.Weather = value;
+        weather.IsRaining = value is Game1.weather_rain or Game1.weather_lightning or Game1.weather_green_rain;
+        weather.IsLightning = value == Game1.weather_lightning;
+        weather.IsGreenRain = value == Game1.weather_green_rain;
+        weather.IsSnowing = value == Game1.weather_snow;
+        weather.IsDebrisWeather = value == Game1.weather_debris;
+
+        if (context != DefaultContext)
+            return;
+        Game1.isRaining = weather.IsRaining;
+        Game1.isLightning = weather.IsLightning;
+        Game1.isGreenRain = weather.IsGreenRain;
+        Game1.isSnowing = weather.IsSnowing;
+        Game1.isDebrisWeather = weather.IsDebrisWeather;
+        if (Game1.isDebrisWeather)
+            Game1.populateDebrisWeatherArray();
+        Game1.updateWeatherIcon();
+    }
+
+    private static string? ParseWeather(JObject body, string field)
+    {
+        string? value = body.Value<string>(field);
+        if (value is null)
+            return null;
+        return Weathers.FirstOrDefault(w => w.Equals(value, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ApiException(400, $"'{field}' must be one of: {string.Join(", ", Weathers)}.");
+    }
+
+    private static object Snapshot()
+    {
+        return new
+        {
+            Day = Game1.dayOfMonth,
+            Season = Game1.season.ToString().ToLowerInvariant(),
+            Game1.year,
+            Time = Game1.timeOfDay,
+            Game1.stats.DaysPlayed,
+            Weathers,
+            Weather = Game1.netWorldState.Value.LocationWeather.Pairs
+                .OrderBy(p => p.Key == DefaultContext ? 0 : 1)
+                .ThenBy(p => p.Key)
+                .Select(p => new { Context = p.Key, Today = p.Value.Weather, Tomorrow = p.Value.WeatherForTomorrow }),
+            CurrentLocation = Game1.player.currentLocation?.Name,
+            Locations = Game1.locations
+                .Select(l => new { l.Name, DisplayName = l.DisplayName ?? l.Name })
+                .OrderBy(l => l.DisplayName, StringComparer.CurrentCultureIgnoreCase),
+        };
+    }
+}
