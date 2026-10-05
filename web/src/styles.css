@@ -495,3 +495,17 @@ fieldset {
 .npc-card input[type="number"] {
   width: 90px;
 }
+
+.table-scroll {
+  max-height: 480px;
+  overflow: auto;
+  margin-top: 8px;
+}
+
+.table-scroll input[type="number"] {
+  width: 90px;
+}
+
+.card h4 {
+  margin: 16px 0 8px;
+}

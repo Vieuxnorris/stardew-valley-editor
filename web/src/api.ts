@@ -181,6 +181,37 @@ export interface Villager {
 
 export const portraitUrl = (name: string) => `/api/portraits/${encodeURIComponent(name)}?token=${token ?? ''}`;
 
+export type MineBand = 'copper' | 'iron' | 'gold' | 'iridium';
+
+export interface Rules {
+  cropGrowth: number;
+  cropGrowthOverrides: Record<string, number>;
+  fruitTreeSpeed: number;
+  wildTreeGrowth: number;
+  machineTime: number;
+  mineOre: Partial<Record<MineBand, number>>;
+  mineStones: number;
+  mineMonsters: number;
+  mineGems: number;
+}
+
+export interface CropRule {
+  seedId: string;
+  name: string;
+  harvestItemId: string | null;
+  baseDays: number | null;
+  days: number;
+  baseRegrowDays: number | null;
+  regrowDays: number;
+  override: number | null;
+}
+
+export interface RulesSnapshot {
+  rules: Rules;
+  mineBands: MineBand[];
+  crops: CropRule[];
+}
+
 export interface Quest {
   index: number;
   id: string | null;

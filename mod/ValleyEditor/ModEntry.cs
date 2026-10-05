@@ -2,9 +2,11 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using HarmonyLib;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using ValleyEditor.Domains;
+using ValleyEditor.Rules;
 using ValleyEditor.Server;
 using ValleyEditor.Sprites;
 
@@ -31,6 +33,9 @@ internal sealed class ModEntry : Mod
         this.config = helper.ReadConfig<ModConfig>();
 
         var router = new Router();
+        var rules = new RulesService(helper);
+        MinePatches.Apply(new Harmony(this.ModManifest.UniqueID), this.Monitor);
+
         var sprites = new ItemSprites(this.dispatcher);
         var items = new ItemsDomain(this.dispatcher, this.state, helper.ModRegistry, sprites);
         Domain[] domains =
@@ -43,6 +48,7 @@ internal sealed class ModEntry : Mod
             new ProgressionDomain(this.dispatcher, this.state),
             new QuestsDomain(this.dispatcher, this.state),
             new NpcsDomain(this.dispatcher, this.state, sprites),
+            new RulesDomain(this.dispatcher, this.state, rules),
         };
         foreach (Domain domain in domains)
             domain.Register(router);

@@ -5,13 +5,14 @@ import { InventoryTab } from './tabs/InventoryTab';
 import { NpcsTab } from './tabs/NpcsTab';
 import { PlayerTab } from './tabs/PlayerTab';
 import { ProgressionTab } from './tabs/ProgressionTab';
+import { RulesTab } from './tabs/RulesTab';
 import { WorldTab } from './tabs/WorldTab';
 
 const STATUS_POLL_MS = 2000;
 
 type Connection = { kind: 'loading' } | { kind: 'offline' } | { kind: 'unauthorized' } | { kind: 'ok'; status: Status };
 
-const TABS = ['player', 'inventory', 'npcs', 'world', 'progression'] as const;
+const TABS = ['player', 'inventory', 'npcs', 'world', 'progression', 'rules'] as const;
 type Tab = (typeof TABS)[number];
 
 export function App() {
@@ -71,6 +72,7 @@ export function App() {
             {tab === 'npcs' && <NpcsTab onChanged={refreshStatus} />}
             {tab === 'world' && <WorldTab onChanged={refreshStatus} />}
             {tab === 'progression' && <ProgressionTab onChanged={refreshStatus} />}
+            {tab === 'rules' && <RulesTab onChanged={refreshStatus} />}
           </main>
         </>
       )}

@@ -1,0 +1,137 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Newtonsoft.Json.Linq;
+using StardewValley;
+using ValleyEditor.Rules;
+using ValleyEditor.Server;
+
+namespace ValleyEditor.Domains;
+
+/// <summary>Per-save game rules: crop, tree and machine speed, and mine generation.</summary>
+internal sealed class RulesDomain : Domain
+{
+    private readonly RulesService rules;
+
+    public RulesDomain(GameThreadDispatcher game, EditorState state, RulesService rules)
+        : base(game, state)
+    {
+        this.rules = rules;
+    }
+
+    public override void Register(Router router)
+    {
+        router.Get("/api/rules", _ => this.Read(this.Snapshot));
+
+        // partial update: only the fields sent change; a crop override of null removes it
+        router.Patch("/api/rules", request =>
+        {
+            JObject body = request.BodyObject;
+            double? cropGrowth = OptDouble(body, "cropGrowth", 0.05, 10);
+            int? fruitTreeSpeed = OptInt(body, "fruitTreeSpeed", 1, 28);
+            double? wildTreeGrowth = OptDouble(body, "wildTreeGrowth", 0, 20);
+            double? machineTime = OptDouble(body, "machineTime", 0.01, 10);
+            double? mineStones = OptDouble(body, "mineStones", 0, 5);
+            double? mineMonsters = OptDouble(body, "mineMonsters", 0, 10);
+            double? mineGems = OptDouble(body, "mineGems", 0, 20);
+
+            var mineOre = new Dictionary<string, double>();
+            if (body["mineOre"] is JObject ore)
+            {
+                foreach (var (band, _) in ore)
+                {
+                    if (!RulesData.MineBands.Contains(band))
+                        throw new ApiException(400, $"Unknown mine band '{band}'. Expected: {string.Join(", ", RulesData.MineBands)}.");
+                    mineOre[band] = OptDouble(ore, band, 0, 50) ?? 1;
+                }
+            }
+
+            var cropOverrides = new Dictionary<string, double?>();
+            if (body["cropGrowthOverrides"] is JObject overrides)
+            {
+                foreach (var (seedId, _) in overrides)
+                    cropOverrides[seedId] = OptDouble(overrides, seedId, 0.05, 10);
+            }
+
+            return this.Write(() =>
+            {
+                this.rules.Update(r =>
+                {
+                    r.CropGrowth = cropGrowth ?? r.CropGrowth;
+                    r.FruitTreeSpeed = fruitTreeSpeed ?? r.FruitTreeSpeed;
+                    r.WildTreeGrowth = wildTreeGrowth ?? r.WildTreeGrowth;
+                    r.MachineTime = machineTime ?? r.MachineTime;
+                    r.MineStones = mineStones ?? r.MineStones;
+                    r.MineMonsters = mineMonsters ?? r.MineMonsters;
+                    r.MineGems = mineGems ?? r.MineGems;
+                    foreach (var (band, value) in mineOre)
+                        r.MineOre[band] = value;
+                    foreach (var (seedId, value) in cropOverrides)
+                    {
+                        if (value.HasValue)
+                            r.CropGrowthOverrides[seedId] = value.Value;
+                        else
+                            r.CropGrowthOverrides.Remove(seedId);
+                    }
+                });
+                return this.Snapshot();
+            });
+        });
+
+        router.Post("/api/rules/reset", _ => this.Write(() =>
+        {
+            this.rules.Replace(new RulesData());
+            return this.Snapshot();
+        }));
+
+        router.Post("/api/rules/apply-to-planted-crops", _ => this.Write(() => new { Updated = RulesService.ApplyToPlantedCrops() }));
+    }
+
+    private object Snapshot()
+    {
+        RulesData current = RulesService.Current;
+
+        // read Data/Crops so the baselines are captured even if nothing requested it since the last change
+        Dictionary<string, StardewValley.GameData.Crops.CropData> crops = DataLoader.Crops(Game1.content);
+
+        return new
+        {
+            Rules = current,
+            MineBands = RulesData.MineBands,
+            Crops = crops
+                .Select(pair =>
+                {
+                    this.rules.CropBaselines.TryGetValue(pair.Key, out CropBaseline? baseline);
+                    return new
+                    {
+                        SeedId = pair.Key,
+                        Name = ItemRegistry.GetData("(O)" + pair.Value.HarvestItemId)?.DisplayName
+                            ?? ItemRegistry.GetData("(O)" + pair.Key)?.DisplayName
+                            ?? pair.Key,
+                        HarvestItemId = pair.Value.HarvestItemId != null ? "(O)" + pair.Value.HarvestItemId : null,
+                        BaseDays = baseline?.Phases.Sum(),
+                        Days = pair.Value.DaysInPhase.Sum(),
+                        BaseRegrowDays = baseline?.RegrowDays,
+                        RegrowDays = pair.Value.RegrowDays,
+                        Override = current.CropGrowthOverrides.TryGetValue(pair.Key, out double value) ? value : (double?)null,
+                    };
+                })
+                .OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToArray(),
+        };
+    }
+
+    private static double? OptDouble(JObject body, string name, double min, double max)
+    {
+        JToken? token = body[name];
+        if (token is null || token.Type == JTokenType.Null)
+            return null;
+        if (token.Type is not (JTokenType.Float or JTokenType.Integer))
+            throw new ApiException(400, $"'{name}' must be a number.");
+
+        double value = token.Value<double>();
+        if (double.IsNaN(value) || value < min || value > max)
+            throw new ApiException(400, $"'{name}' must be between {min} and {max}.");
+        return value;
+    }
+}
