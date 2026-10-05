@@ -144,6 +144,38 @@ Un écran « Règles » liste chaque réglage avec sa valeur vanilla, sa valeur 
 - **Coffres** : liste des coffres de tous les lieux, avec édition de leur contenu (réutilise la grille d'inventaire).
 - Vue carte interactive de la ferme (rendu des tuiles) : **optionnelle, en fin de phase**. Une interface en
   listes vient d'abord.
+- **Ajouté en cours de route** : animal de compagnie (nom, amitié, caresse du jour, gamelle) dans l'onglet
+  Animaux. Hors tuiles, la phase est livrée : le stade d'une culture se règle via « Mûrir », il n'y a pas de
+  stade au choix.
+
+### Phase 6b — Collections et objets spéciaux (≈ ½ journée) — demandée par Julien
+- **Collections** : les pages du menu (objets expédiés, poissons, artefacts, minéraux, cuisine) et l'artisanat.
+  Pour chacune, la progression (x/y) et un bouton « Compléter », plus « Tout compléter ». Les artefacts et
+  minéraux sont comptés par le jeu via les dons au musée, donc on les dépose dans le musée.
+- **Objets spéciaux et pouvoirs** : la page du portefeuille, lue depuis `Data/Powers`. Elle inclut les livres
+  de pouvoir 1.6 et les entrées des mods. Chaque entrée s'obtient ou se retire, et « Tout débloquer » est
+  disponible. Le déblocage passe par la condition de l'entrée (`PLAYER_HAS_MAIL`, `PLAYER_STAT`). Les autres
+  conditions sont affichées en lecture seule.
+- Les succès Steam sont volontairement **exclus** : ils sont définitifs sur le compte.
+
+### Phase 6c — Éditeur d'items (≈ 2–3 jours) — demandée par Julien
+Il s'ouvre en cliquant un objet de l'inventaire ou d'un coffre. On reprend le panneau quantité/qualité et on
+l'étend selon le type de l'objet :
+
+| Type | Champs éditables |
+|---|---|
+| Tous | quantité, qualité, prix de vente (`Object.Price`), « objet de quête » / ne peut pas être jeté |
+| Armes (`MeleeWeapon`, `Slingshot`) | dégâts min/max, vitesse, chance et multiplicateur de critique, recul, précision, défense, zone d'effet ; enchantements (innés de la Forge, puis Galaxy Soul, Infinity…), nombre de forges, apparence (« transmog ») |
+| Outils | niveau d'amélioration (cuivre → iridium), enchantements (Auto-Hook, Efficace, Rapide, Généreux, Reaching…), contenance de l'arrosoir ; canne à pêche : appât et matériel attachés |
+| Anneaux | fusion de deux anneaux (`CombinedRing`) |
+| Vêtements et chapeaux | couleur / teinture |
+| Produits artisanaux | ingrédient d'origine (vin de *X*, confiture de *Y* : `preservedParentSheetIndex`) |
+
+- Les valeurs vanilla sont affichées à côté de chaque champ, avec un bouton reset.
+- Les bornes sont validées côté serveur. Les champs dont la valeur est recalculée par le jeu sont signalés
+  dans l'UI : par exemple, les stats d'une arme reviennent aux données si elle est rechargée depuis `Data/Weapons`.
+- **Point à vérifier en phase 0 de cette étape** : quels champs survivent à la sauvegarde XML et au
+  rechargement. On teste avec la save de labo : dormir, recharger, comparer.
 
 ### Phase 7 — Finition et publication (≈ 2 jours)
 - Historique des modifications et **annulation** de la dernière action.

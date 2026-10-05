@@ -57,6 +57,7 @@ internal sealed class ModEntry : Mod
             new FarmDomain(this.dispatcher, this.state, sprites),
             new AnimalsDomain(this.dispatcher, this.state, sprites),
             new ChestsDomain(this.dispatcher, this.state),
+            new CollectionsDomain(this.dispatcher, this.state, sprites),
         };
         foreach (Domain domain in domains)
             domain.Register(router);

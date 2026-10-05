@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { api, type Progression, type Quest, type SpecialOrders } from '../api';
 import { FeedbackLine, NumberField, useAction } from '../components';
 import { useI18n } from '../i18n';
+import { CollectionsCards } from './CollectionsCards';
 
 type Props = { onChanged: () => void };
 
@@ -19,6 +20,7 @@ export function ProgressionTab({ onChanged }: Props) {
   const shared = { progress, setProgress, onChanged };
   return (
     <div class="stack">
+      <CollectionsCards onChanged={onChanged} />
       <UnlocksCard {...shared} />
       <MinesCard {...shared} />
       <CommunityCenterCard {...shared} />

@@ -779,3 +779,47 @@ button.small {
   border-radius: 8px;
   padding: 8px;
 }
+
+.power-grid {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.power-tile {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 4px 8px;
+  background: var(--surface);
+  color: inherit;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+}
+
+.power-tile img {
+  image-rendering: pixelated;
+  filter: grayscale(1) opacity(0.45);
+}
+
+.power-tile.unlocked {
+  border-color: var(--accent);
+}
+
+.power-tile.unlocked img {
+  filter: none;
+}
+
+.power-tile:disabled {
+  cursor: default;
+}
+
+progress {
+  vertical-align: middle;
+  accent-color: var(--accent);
+}

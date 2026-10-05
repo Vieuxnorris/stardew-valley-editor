@@ -394,3 +394,10 @@ export interface PetInfo {
 }
 
 export const petSpriteUrl = (id: string) => `/api/pet-sprites/${encodeURIComponent(id)}?token=${token ?? ''}`;
+
+export interface Collections {
+  categories: { id: string; done: number; total: number }[];
+  powers: { id: string; name: string; description: string; unlocked: boolean; editable: boolean }[];
+}
+
+export const powerSpriteUrl = (id: string) => `/api/power-sprites/${encodeURIComponent(id)}?token=${token ?? ''}`;
