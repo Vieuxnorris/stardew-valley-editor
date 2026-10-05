@@ -153,6 +153,17 @@ internal sealed class RulesData
     /// <summary>Extra luck level (a permanent buff).</summary>
     public int LuckBonus { get; set; }
 
+    // building & crafting
+
+    /// <summary>Robin's and the Wizard's buildings and Robin's house upgrades cost no gold or materials.</summary>
+    public bool FreeBuild { get; set; }
+
+    /// <summary>Buildings and building upgrades finish as soon as they're placed; house upgrades are ready the next morning.</summary>
+    public bool InstantBuild { get; set; }
+
+    /// <summary>Crafting and cooking need no ingredients.</summary>
+    public bool FreeCrafting { get; set; }
+
     /// <summary>The mine bands, by the ore they hold.</summary>
     public static readonly string[] MineBands = { "copper", "iron", "gold", "iridium" };
 

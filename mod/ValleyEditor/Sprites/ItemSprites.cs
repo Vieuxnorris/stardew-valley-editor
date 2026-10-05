@@ -26,6 +26,16 @@ internal sealed class ItemSprites
         ["Skeleton Mage"] = new(16, 32), ["Shadow Girl"] = new(16, 32), ["Shadow Guy"] = new(16, 32),
     };
 
+    /// <summary>Monsters drawn with another monster's texture, and the tint the game applies (slimes are grey sheets coloured at draw time; GreenSlime constructor).</summary>
+    private static readonly Dictionary<string, (string Texture, Color Tint)> MonsterLooks = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Green Slime"] = ("Green Slime", new Color(40, 220, 30)),
+        ["Frost Jelly"] = ("Green Slime", new Color(40, 180, 230)),
+        ["Sludge"] = ("Green Slime", new Color(210, 50, 60)),
+        ["Shadow Guy"] = ("Shadow Brute", Color.White),
+        ["Skeleton Warrior"] = ("Skeleton", Color.White),
+    };
+
     private readonly GameThreadDispatcher game;
     private readonly ConcurrentDictionary<string, byte[]> cache = new();
 
@@ -56,17 +66,26 @@ internal sealed class ItemSprites
     /// <summary>The first frame of a monster's sprite sheet (facing down), trimmed to its visible pixels.</summary>
     public Task<byte[]> GetMonsterPng(string monsterName) => this.GetPng("monster:" + monsterName, () =>
     {
+        (string sheet, Color tint) = MonsterLooks.TryGetValue(monsterName, out var look) ? look : (monsterName, Color.White);
         Texture2D texture;
         try
         {
-            texture = Game1.content.Load<Texture2D>("Characters\\Monsters\\" + monsterName);
+            texture = Game1.content.Load<Texture2D>("Characters\\Monsters\\" + sheet);
         }
         catch (ContentLoadException)
         {
             throw new ApiException(404, $"No sprite for monster '{monsterName}'.");
         }
-        Point frame = MonsterFrames.TryGetValue(monsterName, out Point size) ? size : new Point(16, 24);
+        Point frame = MonsterFrames.TryGetValue(sheet, out Point size) ? size : new Point(16, 24);
         var (pixels, width, height) = ReadPixels(texture, new Rectangle(0, 0, frame.X, frame.Y));
+        if (tint != Color.White)
+        {
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                Color p = pixels[i];
+                pixels[i] = new Color(p.R * tint.R / 255, p.G * tint.G / 255, p.B * tint.B / 255, p.A);
+            }
+        }
         return Trim(pixels, width, height);
     });
 

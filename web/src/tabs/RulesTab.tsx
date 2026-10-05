@@ -268,6 +268,13 @@ function OpCard({ snapshot, setSnapshot, onChanged }: CardProps) {
           {toggle('freezeTime')}
           {toggle('maxDailyLuck')}
         </fieldset>
+        <fieldset>
+          <legend>{t('op.building')}</legend>
+          {toggle('freeBuild')}
+          {toggle('instantBuild')}
+          {toggle('freeCrafting')}
+          <p class="muted">{t('op.buildHint')}</p>
+        </fieldset>
       </div>
 
       <form
@@ -292,7 +299,7 @@ function OpCard({ snapshot, setSnapshot, onChanged }: CardProps) {
               </select>
             </label>
             <RatioField label={t('op.monsterLootRolls')} value={values.monsterLootRolls} onInput={set('monsterLootRolls')} min={1} max={20} step={1} />
-            <RatioField label={t('op.sellPrice')} value={values.sellPrice} onInput={set('sellPrice')} min={0.01} max={100} step={0.5} />
+            <RatioField label={t('op.sellPrice')} value={values.sellPrice} onInput={set('sellPrice')} min={0.05} max={100} step={0.05} />
           </div>
           <p class="muted">{t('op.pickupHint')}</p>
         </fieldset>

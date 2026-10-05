@@ -25,6 +25,9 @@ internal sealed class RulesDomain : Domain
         ("infiniteStamina", (r, v) => r.InfiniteStamina = v),
         ("freezeTime", (r, v) => r.FreezeTime = v),
         ("maxDailyLuck", (r, v) => r.MaxDailyLuck = v),
+        ("freeBuild", (r, v) => r.FreeBuild = v),
+        ("instantBuild", (r, v) => r.InstantBuild = v),
+        ("freeCrafting", (r, v) => r.FreeCrafting = v),
     };
 
     /// <summary>Whole-number rules, by JSON field name, with their allowed range.</summary>

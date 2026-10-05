@@ -186,7 +186,7 @@ export interface MapRegion {
   id: string;
   width: number;
   height: number;
-  areas: { id: string; name: string | null; x: number; y: number; width: number; height: number; location: string | null; current: boolean }[];
+  areas: { id: string; name: string | null; detail: string | null; x: number; y: number; width: number; height: number; location: string | null; current: boolean }[];
 }
 
 export const portraitUrl = (name: string) => `/api/portraits/${encodeURIComponent(name)}?token=${token ?? ''}`;
@@ -215,6 +215,9 @@ export interface Rules {
   infiniteStamina: boolean;
   freezeTime: boolean;
   maxDailyLuck: boolean;
+  freeBuild: boolean;
+  instantBuild: boolean;
+  freeCrafting: boolean;
   speedBonus: number;
   magnetRadiusBonus: number;
   luckBonus: number;

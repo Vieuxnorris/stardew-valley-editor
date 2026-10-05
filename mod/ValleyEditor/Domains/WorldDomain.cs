@@ -126,35 +126,73 @@ internal sealed class WorldDomain : Domain
                     Id = pair.Key,
                     bounds.Width,
                     bounds.Height,
+                    // one clickable spot per tooltip (an area like Town has one per building), biggest first so smaller ones sit on top
                     Areas = pair.Value.MapAreas
                         .Where(area => GameStateQuery.CheckConditions(area.Condition))
-                        .Select(area =>
-                        {
-                            WorldMapTooltipData? tooltip = area.Tooltips.FirstOrDefault(t => GameStateQuery.CheckConditions(t.Condition));
-                            Rectangle hit = !area.PixelArea.IsEmpty ? area.PixelArea : tooltip?.PixelArea ?? Rectangle.Empty;
-                            string[] names = area.WorldPositions
-                                .Where(p => GameStateQuery.CheckConditions(p.Condition))
-                                .SelectMany(p => p.LocationNames.Prepend(p.LocationName))
-                                .Where(n => !string.IsNullOrEmpty(n))
-                                .Distinct()
-                                .ToArray();
-                            return new
+                        .SelectMany(area => area.Tooltips
+                            .Where(t => GameStateQuery.CheckConditions(t.Condition))
+                            .Select(tooltip =>
                             {
-                                area.Id,
-                                Name = tooltip?.Text is { Length: > 0 } text ? TokenParser.ParseText(text) : null,
-                                hit.X,
-                                hit.Y,
-                                hit.Width,
-                                hit.Height,
-                                Location = names.FirstOrDefault(n => Game1.getLocationFromName(n) != null),
-                                Current = current != null && names.Contains(current),
-                            };
-                        })
+                                Rectangle hit = !tooltip.PixelArea.IsEmpty ? tooltip.PixelArea : area.PixelArea;
+                                string[] lines = (TokenParser.ParseText(tooltip.Text) ?? "")
+                                    .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                                string? location = TooltipLocation(area, tooltip, hit);
+                                return new
+                                {
+                                    Id = $"{area.Id}/{tooltip.Id}",
+                                    Name = lines.FirstOrDefault(),
+                                    Detail = lines.Length > 1 ? string.Join(" · ", lines.Skip(1)) : null,
+                                    hit.X,
+                                    hit.Y,
+                                    hit.Width,
+                                    hit.Height,
+                                    Location = location,
+                                    Current = location != null && location == current,
+                                };
+                            }))
                         .Where(a => a.Width > 0 && a.Height > 0)
+                        .OrderByDescending(a => a.Width * a.Height)
                         .ToArray(),
                 };
             })
             .ToArray();
+    }
+
+    /// <summary>
+    /// Guess which location a map tooltip stands for. Tooltips have no location of their own, so pick the area's
+    /// world position whose pixel area best overlaps the tooltip; ties favour a location named like the tooltip or
+    /// area, then outdoor locations (the 'Town' tooltip covers the whole area, like every building's interior does).
+    /// </summary>
+    private static string? TooltipLocation(WorldMapAreaData area, WorldMapTooltipData tooltip, Rectangle hit)
+    {
+        return area.WorldPositions
+            .Where(p => GameStateQuery.CheckConditions(p.Condition))
+            .SelectMany(p =>
+            {
+                Rectangle spot = !p.MapPixelArea.IsEmpty ? p.MapPixelArea : area.PixelArea;
+                double overlap = Math.Round(Overlap(hit, spot), 2); // near-equal rectangles tie, so the name rules decide
+                return p.LocationNames.Prepend(p.LocationName)
+                    .Where(n => !string.IsNullOrEmpty(n))
+                    .Select(n => (Name: n, Overlap: overlap));
+            })
+            .Select(c => (c.Name, c.Overlap, Location: Game1.getLocationFromName(c.Name)))
+            .Where(c => c.Location != null && c.Overlap > 0)
+            .OrderByDescending(c => c.Overlap)
+            .ThenByDescending(c => c.Name.Equals(tooltip.Id, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(c => c.Name.Equals(area.Id, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(c => c.Location!.IsOutdoors)
+            .Select(c => c.Name)
+            .FirstOrDefault();
+    }
+
+    /// <summary>Intersection over union of two rectangles (1 = identical, 0 = disjoint).</summary>
+    private static double Overlap(Rectangle a, Rectangle b)
+    {
+        Rectangle inter = Rectangle.Intersect(a, b);
+        if (inter.IsEmpty)
+            return 0;
+        double i = inter.Width * inter.Height;
+        return i / (a.Width * a.Height + b.Width * b.Height - i);
     }
 
     /// <summary>The map size: the union of the base textures' areas.</summary>

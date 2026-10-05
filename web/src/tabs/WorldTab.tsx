@@ -233,9 +233,9 @@ function MapCard({ setWorld, onChanged }: CardProps) {
                   height: `${(a.height / region.height) * 100}%`,
                 }}
                 disabled={busy}
-                title={a.name ?? a.location ?? ''}
+                title={[a.name ?? a.location, a.detail].filter(Boolean).join('\n')}
                 aria-label={`${t('world.go')} : ${a.name ?? a.location}`}
-                onMouseEnter={() => setHover(a.name ?? a.location)}
+                onMouseEnter={() => setHover([a.name ?? a.location, a.detail].filter(Boolean).join(' — '))}
                 onMouseLeave={() => setHover(null)}
                 onClick={() => warp(a.location!)}
               />

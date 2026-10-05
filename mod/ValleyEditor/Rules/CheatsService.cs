@@ -56,6 +56,25 @@ internal sealed class CheatsService
         harmony.Patch(
             AccessTools.Method(typeof(SObject), nameof(SObject.sellToStorePrice)),
             postfix: new HarmonyMethod(typeof(CheatsService), nameof(AfterSellToStorePrice)));
+
+        // free build: Robin's and the Wizard's menu, and Robin's house upgrades (hard-coded costs)
+        harmony.Patch(
+            AccessTools.Method(typeof(CarpenterMenu), nameof(CarpenterMenu.DoesFarmerHaveEnoughResourcesToBuild)),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeHasResourcesToBuild)));
+        harmony.Patch(
+            AccessTools.Method(typeof(CarpenterMenu), nameof(CarpenterMenu.ConsumeResources)),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeConsumeBuildResources)));
+        harmony.Patch(
+            AccessTools.Method(typeof(GameLocation), "houseUpgradeAccept"),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeHouseUpgradeAccept)));
+
+        // free crafting and cooking
+        harmony.Patch(
+            AccessTools.Method(typeof(CraftingRecipe), nameof(CraftingRecipe.doesFarmerHaveIngredientsInInventory)),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeHasIngredients)));
+        harmony.Patch(
+            AccessTools.Method(typeof(CraftingRecipe), nameof(CraftingRecipe.consumeIngredients)),
+            prefix: new HarmonyMethod(typeof(CheatsService), nameof(BeforeConsumeIngredients)));
     }
 
     /// <summary>Re-apply the effects that the game resets daily or that are set once (luck, buffs). Call on the game thread after rules change.</summary>
@@ -93,6 +112,8 @@ internal sealed class CheatsService
             player.Stamina = player.MaxStamina;
         if (rules.FreezeTime)
             Game1.gameTimeInterval = 0;
+        if (rules.InstantBuild && e.IsMultipleOf(15) && Game1.activeClickableMenu == null)
+            FinishConstructions(player);
 
         try
         {
@@ -192,6 +213,55 @@ internal sealed class CheatsService
             inExtraMonsterDrop = false;
         }
     }
+
+    /// <summary>Finish buildings once the build menu is closed (finishing them under the open menu would confuse it).</summary>
+    private static void FinishConstructions(Farmer player)
+    {
+        Utility.ForEachBuilding(building =>
+        {
+            if (building.daysOfConstructionLeft.Value > 0 || building.daysUntilUpgrade.Value > 0)
+                building.FinishConstruction();
+            return true;
+        }, ignoreUnderConstruction: false);
+
+        // the farmhouse is rebuilt overnight (furniture moved, new map): enlarging it under the player's feet isn't safe
+        if (player.daysUntilHouseUpgrade.Value > 1)
+            player.daysUntilHouseUpgrade.Value = 1;
+    }
+
+    private static bool BeforeHasResourcesToBuild(ref bool __result)
+    {
+        if (!RulesService.Current.FreeBuild)
+            return true;
+        __result = true;
+        return false;
+    }
+
+    private static bool BeforeConsumeBuildResources() => !RulesService.Current.FreeBuild;
+
+    /// <summary>Robin's house upgrade, minus the gold and wood (GameLocation.houseUpgradeAccept, levels 0 to 2).</summary>
+    private static bool BeforeHouseUpgradeAccept()
+    {
+        RulesData rules = RulesService.Current;
+        Farmer player = Game1.player;
+        if (!rules.FreeBuild || player.HouseUpgradeLevel > 2)
+            return true;
+
+        player.daysUntilHouseUpgrade.Value = rules.InstantBuild ? 1 : 3;
+        Game1.RequireCharacter("Robin").setNewDialogue("Data\\ExtraDialogue:Robin_HouseUpgrade_Accepted", add: true);
+        Game1.drawDialogue(Game1.getCharacterFromName("Robin"));
+        return false;
+    }
+
+    private static bool BeforeHasIngredients(ref bool __result)
+    {
+        if (!RulesService.Current.FreeCrafting)
+            return true;
+        __result = true;
+        return false;
+    }
+
+    private static bool BeforeConsumeIngredients() => !RulesService.Current.FreeCrafting;
 
     private static void AfterSellToStorePrice(ref int __result)
     {
