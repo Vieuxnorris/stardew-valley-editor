@@ -12,3 +12,4 @@ mod/ValleyEditor/wwwroot/
 stardew-decomp/
 Saves/
 *.zip
+release/
