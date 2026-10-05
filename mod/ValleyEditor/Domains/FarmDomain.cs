@@ -247,6 +247,20 @@ internal sealed class FarmDomain : Domain
         foreach ((Point door, string target) in location.doors.Pairs)
             AddExit(target, door.X, door.Y);
 
+        // warps written as tile properties: the cellar stairs ("TouchAction Warp Cellar x y"), doors ("Action Warp x y Town",
+        // "LockedDoorWarp x y SeedShop ..."), "MagicWarp", "WarpGreenhouse"...
+        for (int ty = 0; ty < size.Y / tile; ty++)
+        {
+            for (int tx = 0; tx < size.X / tile; tx++)
+            {
+                foreach ((string property, string layer) in new[] { ("TouchAction", "Back"), ("Action", "Buildings") })
+                {
+                    if (location.doesTileHaveProperty(tx, ty, property, layer) is { Length: > 0 } value)
+                        AddExit(WarpTarget(value), tx, ty);
+                }
+            }
+        }
+
         return new
         {
             Location = name,
@@ -284,6 +298,20 @@ internal sealed class FarmDomain : Domain
                 })
                 .ToArray(),
         };
+    }
+
+    /// <summary>The location a warp-like tile action leads to, whatever order its arguments come in; null if it isn't a warp.</summary>
+    private static string? WarpTarget(string action)
+    {
+        string[] args = ArgUtility.SplitBySpace(action);
+        if (args.Length == 0 || !args[0].Contains("Warp", StringComparison.OrdinalIgnoreCase))
+            return null;
+        string? named = args.Skip(1).FirstOrDefault(arg => !int.TryParse(arg, out _) && Game1.getLocationFromName(arg) != null);
+        if (named != null)
+            return named;
+        // "WarpGreenhouse", "WarpCommunityCenter": the place is in the action's name
+        string implied = args[0].StartsWith("Warp", StringComparison.OrdinalIgnoreCase) ? args[0][4..] : "";
+        return implied.Length > 0 && Game1.getLocationFromName(implied) != null ? implied : null;
     }
 
     private record Field(string Location, string DisplayName, int Crops, int Dry, int Ready, int Dead, int FruitTrees, int YoungTrees);
