@@ -39,6 +39,7 @@ Raison : SMAPI déjà installé, code du jeu lisible en C#, live sans quitter le
 - 2026-10-05 — Phase 2 codée (joueur complet, inventaire, catalogue avec icônes PNG). En attente du test en jeu.
 - 2026-10-05 ~16:50 — **INCIDENT** : `Mods/` ne contient plus que ValleyEditor, le zip Quantium et `vortex.deployment.json`. SMAPI n'a chargé qu'un seul mod. Dernière modification de `Mods/` : 16:34:06.
   - Vortex déploie en `symlink_activator`, avec le staging dans `%APPDATA%\Vortex\stardewvalley\mods`. Ce staging est intact (69 mods, 61 Mo) : seuls les liens ont disparu. Réparation : Vortex → Deploy.
-  - Cause inconnue. Nos seules suppressions dans `Mods/` visaient `Mods/ValleyEditor/wwwroot`, après 16:50. ModBuildConfig ne déploie que dans `Mods/ValleyEditor`. À clarifier avec Julien (purge Vortex ?).
+  - Cause : purge Vortex volontaire de Julien (confirmé). Ce n'est pas un bug de notre côté.
   - Impact : seule la save Lab a été sauvée sans mods (16:45). Les autres saves n'ont pas été modifiées depuis septembre. Après le redéploiement, restaurer Lab depuis la copie intacte.
 - Constat catalogue : 2 446 items, tous du jeu de base (normal, aucun mod chargé). La détection du mod d'origine reste à tester avec les mods.
+- 2026-10-05 — Phase 2 VALIDÉE par Julien en jeu (joueur, inventaire, catalogue, icônes). Reste à faire : tester l'attribution des items à leur mod une fois Vortex redéployé.
