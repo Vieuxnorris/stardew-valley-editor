@@ -5,6 +5,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.GameData.Crops;
+using StardewValley.GameData.Locations;
 using StardewValley.GameData.Machines;
 using StardewValley.GameData.WildTrees;
 using StardewValley.Objects;
@@ -19,7 +20,7 @@ internal sealed record CropBaseline(List<int> Phases, int RegrowDays, string Har
 internal sealed class RulesService
 {
     private const string SaveKey = "rules";
-    private static readonly string[] EditedAssets = { "Data/Crops", "Data/Machines", "Data/WildTrees" };
+    private static readonly string[] EditedAssets = { "Data/Crops", "Data/Machines", "Data/WildTrees", "Data/Locations", "Data/Monsters" };
 
     private readonly IModHelper helper;
 
@@ -28,6 +29,12 @@ internal sealed class RulesService
 
     /// <summary>Crop data by seed ID as other mods left it, captured each time Data/Crops is edited.</summary>
     public Dictionary<string, CropBaseline> CropBaselines { get; } = new();
+
+    /// <summary>Fishing spawn tables by location as other mods left them (copies), captured each time Data/Locations is edited.</summary>
+    public Dictionary<string, List<SpawnFishData>> FishBaselines { get; } = new();
+
+    /// <summary>The Data/Monsters entries as other mods left them, captured each time it's edited.</summary>
+    public Dictionary<string, string> MonsterBaselines { get; } = new();
 
     public RulesService(IModHelper helper)
     {
@@ -98,6 +105,10 @@ internal sealed class RulesService
             e.Edit(asset => EditMachines(asset.AsDictionary<string, MachineData>().Data), AssetEditPriority.Late);
         else if (e.NameWithoutLocale.IsEquivalentTo("Data/WildTrees"))
             e.Edit(asset => EditWildTrees(asset.AsDictionary<string, WildTreeData>().Data), AssetEditPriority.Late);
+        else if (e.NameWithoutLocale.IsEquivalentTo("Data/Locations"))
+            e.Edit(asset => this.EditFishTables(asset.AsDictionary<string, LocationData>().Data), AssetEditPriority.Late);
+        else if (e.NameWithoutLocale.IsEquivalentTo("Data/Monsters"))
+            e.Edit(asset => this.EditMonsterDrops(asset.AsDictionary<string, string>().Data), AssetEditPriority.Late);
     }
 
     private void EditCrops(IDictionary<string, CropData> crops)
@@ -142,6 +153,60 @@ internal sealed class RulesService
         {
             tree.GrowthChance = Math.Clamp(tree.GrowthChance * (float)multiplier, 0, 1);
             tree.FertilizedGrowthChance = Math.Clamp(tree.FertilizedGrowthChance * (float)multiplier, 0, 1);
+        }
+    }
+
+    /// <summary>Apply fishing table edits: chance overrides, removed entries, and added fish rolled first.</summary>
+    private void EditFishTables(IDictionary<string, LocationData> locations)
+    {
+        this.FishBaselines.Clear();
+        foreach ((string name, LocationData location) in locations)
+        {
+            if (location.Fish is not { Count: > 0 } && !Current.FishTables.ContainsKey(name))
+                continue;
+            location.Fish ??= new List<SpawnFishData>();
+            this.FishBaselines[name] = location.Fish.Select(f => new SpawnFishData { Id = f.Id, ItemId = f.ItemId, RandomItemId = f.RandomItemId, Chance = f.Chance, Season = f.Season, Condition = f.Condition, IsBossFish = f.IsBossFish }).ToList();
+
+            if (!Current.FishTables.TryGetValue(name, out FishTableEdit? edit))
+                continue;
+            location.Fish.RemoveAll(f => f.Id != null && edit.Removed.Contains(f.Id));
+            foreach (SpawnFishData fish in location.Fish)
+            {
+                if (fish.Id != null && edit.Chances.TryGetValue(fish.Id, out float chance))
+                    fish.Chance = chance;
+            }
+            for (int i = 0; i < edit.Added.Count; i++)
+            {
+                LootEntry added = edit.Added[i];
+                location.Fish.Add(new SpawnFishData
+                {
+                    Id = $"Julien.ValleyEditor_{i}_{added.ItemId}",
+                    ItemId = added.ItemId,
+                    Chance = (float)Math.Clamp(added.Chance, 0, 1),
+                    Precedence = -100, // rolled before the vanilla entries, so the chance means what it says
+                    IgnoreFishDataRequirements = true, // no season, time or weather limits
+                });
+            }
+        }
+    }
+
+    /// <summary>Replace monster drop tables (field 6 of Data/Monsters).</summary>
+    private void EditMonsterDrops(IDictionary<string, string> monsters)
+    {
+        this.MonsterBaselines.Clear();
+        foreach (string name in monsters.Keys.ToArray())
+        {
+            string entry = monsters[name];
+            this.MonsterBaselines[name] = entry;
+            if (!Current.MonsterDrops.TryGetValue(name, out List<LootEntry>? drops))
+                continue;
+
+            string[] fields = entry.Split('/');
+            if (fields.Length <= 6)
+                continue;
+            // the field holds unqualified object IDs (the API only accepts objects for drops)
+            fields[6] = RuleMath.FormatMonsterDrops(drops.Select(d => (d.ItemId.StartsWith("(O)") ? d.ItemId[3..] : d.ItemId, d.Chance)));
+            monsters[name] = string.Join('/', fields);
         }
     }
 

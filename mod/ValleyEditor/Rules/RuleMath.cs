@@ -51,6 +51,25 @@ internal static class RuleMath
         return Math.Max(10, scaled);
     }
 
+    /// <summary>Parse the drop field of Data/Monsters ("id chance id chance ..."), skipping malformed pairs.</summary>
+    public static List<(string ItemId, double Chance)> ParseMonsterDrops(string field)
+    {
+        string[] parts = field.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var drops = new List<(string, double)>();
+        for (int i = 0; i + 1 < parts.Length; i += 2)
+        {
+            if (double.TryParse(parts[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double chance))
+                drops.Add((parts[i], chance));
+        }
+        return drops;
+    }
+
+    /// <summary>Format a drop list back into the Data/Monsters drop field.</summary>
+    public static string FormatMonsterDrops(IEnumerable<(string ItemId, double Chance)> drops)
+    {
+        return string.Join(" ", drops.Select(d => $"{d.ItemId} {Math.Clamp(d.Chance, 0, 1).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)}"));
+    }
+
     /// <summary>
     /// How to reach <paramref name="multiplier"/> times the vanilla ore on a mine level by converting nodes.
     /// Vanilla makes about <paramref name="vanillaOreShare"/> of stones into ore, so for ×N we convert that share

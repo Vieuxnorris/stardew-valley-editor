@@ -520,3 +520,44 @@ fieldset {
   gap: 12px;
   margin-bottom: 12px;
 }
+
+.loot-table input[type='number'] {
+  width: 80px;
+}
+
+.loot-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+tr.struck td {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.monster-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .monster-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.monster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.tabs {
+  flex-wrap: wrap;
+}

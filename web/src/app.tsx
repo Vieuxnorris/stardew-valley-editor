@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { api, ApiError, hasToken, type Status } from './api';
 import { useI18n } from './i18n';
+import { FishingTab } from './tabs/FishingTab';
 import { InventoryTab } from './tabs/InventoryTab';
+import { MonstersTab } from './tabs/MonstersTab';
 import { NpcsTab } from './tabs/NpcsTab';
 import { PlayerTab } from './tabs/PlayerTab';
 import { ProgressionTab } from './tabs/ProgressionTab';
@@ -12,7 +14,7 @@ const STATUS_POLL_MS = 2000;
 
 type Connection = { kind: 'loading' } | { kind: 'offline' } | { kind: 'unauthorized' } | { kind: 'ok'; status: Status };
 
-const TABS = ['player', 'inventory', 'npcs', 'world', 'progression', 'rules'] as const;
+const TABS = ['player', 'inventory', 'npcs', 'world', 'progression', 'fishing', 'monsters', 'rules'] as const;
 type Tab = (typeof TABS)[number];
 
 export function App() {
@@ -72,6 +74,8 @@ export function App() {
             {tab === 'npcs' && <NpcsTab onChanged={refreshStatus} />}
             {tab === 'world' && <WorldTab onChanged={refreshStatus} />}
             {tab === 'progression' && <ProgressionTab onChanged={refreshStatus} />}
+            {tab === 'fishing' && <FishingTab onChanged={refreshStatus} />}
+            {tab === 'monsters' && <MonstersTab onChanged={refreshStatus} />}
             {tab === 'rules' && <RulesTab onChanged={refreshStatus} />}
           </main>
         </>

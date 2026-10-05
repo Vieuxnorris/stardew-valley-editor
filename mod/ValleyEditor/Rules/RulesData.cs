@@ -2,6 +2,38 @@ using System.Collections.Generic;
 
 namespace ValleyEditor.Rules;
 
+/// <summary>An item that may be added to some loot: a treasure chest, a monster's drops, a fishing spot.</summary>
+internal sealed class LootEntry
+{
+    /// <summary>Qualified item ID, like (O)74.</summary>
+    public string ItemId { get; set; } = "";
+
+    /// <summary>Chance to get it, from 0 to 1.</summary>
+    public double Chance { get; set; } = 1;
+
+    public int MinStack { get; set; } = 1;
+
+    public int MaxStack { get; set; } = 1;
+
+    /// <summary>Item quality (0, 1, 2, 4).</summary>
+    public int Quality { get; set; }
+}
+
+/// <summary>Changes to one location's fishing spawn table (Data/Locations → Fish).</summary>
+internal sealed class FishTableEdit
+{
+    /// <summary>New chance for existing entries, by entry ID.</summary>
+    public Dictionary<string, float> Chances { get; set; } = new();
+
+    /// <summary>Entry IDs removed from the table.</summary>
+    public HashSet<string> Removed { get; set; } = new();
+
+    /// <summary>Fish added to the table; they're rolled before vanilla entries and ignore season/time requirements.</summary>
+    public List<LootEntry> Added { get; set; } = new();
+
+    public bool IsEmpty => this.Chances.Count == 0 && this.Removed.Count == 0 && this.Added.Count == 0;
+}
+
 /// <summary>Game rule overrides for one save, stored in the save file through SMAPI. All defaults are vanilla.</summary>
 internal sealed class RulesData
 {
@@ -45,6 +77,33 @@ internal sealed class RulesData
 
     /// <summary>Every catch comes with a treasure chest.</summary>
     public bool AlwaysTreasure { get; set; }
+
+    /// <summary>Fish per catch (vanilla 1, 2 with some bait).</summary>
+    public int FishPerCatch { get; set; } = 1;
+
+    /// <summary>Forced fish quality (0, 1, 2, 4), or -1 to keep the game's.</summary>
+    public int FishQuality { get; set; } = -1;
+
+    /// <summary>Every fish is caught at its species' maximum size.</summary>
+    public bool FishMaxSize { get; set; }
+
+    /// <summary>A qualified item ID every cast catches instead of the game's pick, or null.</summary>
+    public string? ForcedFishId { get; set; }
+
+    /// <summary>Fishing treasure chest stack multiplier.</summary>
+    public int TreasureMultiplier { get; set; } = 1;
+
+    /// <summary>Whether <see cref="TreasureLoot"/> replaces the chest's vanilla contents instead of adding to them.</summary>
+    public bool TreasureReplaceVanilla { get; set; }
+
+    /// <summary>Extra items rolled into every fishing treasure chest.</summary>
+    public List<LootEntry> TreasureLoot { get; set; } = new();
+
+    /// <summary>Changes to fishing spawn tables, by location name in Data/Locations.</summary>
+    public Dictionary<string, FishTableEdit> FishTables { get; set; } = new();
+
+    /// <summary>Replacement drop tables, by monster name in Data/Monsters.</summary>
+    public Dictionary<string, List<LootEntry>> MonsterDrops { get; set; } = new();
 
     // loot
 

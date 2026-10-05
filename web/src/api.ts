@@ -227,6 +227,64 @@ export interface RulesSnapshot {
   crops: CropRule[];
 }
 
+export interface LootEntry {
+  itemId: string;
+  name?: string | null;
+  chance: number;
+  minStack: number;
+  maxStack: number;
+  quality: number;
+}
+
+export interface FishingSnapshot {
+  settings: {
+    fishPerCatch: number;
+    fishQuality: number;
+    fishMaxSize: boolean;
+    forcedFishId: string | null;
+    treasureMultiplier: number;
+    treasureReplaceVanilla: boolean;
+    treasureLoot: LootEntry[];
+  };
+  fish: { id: string; name: string; crabPot: boolean; maxSize: number | null; caught: number; recordSize: number }[];
+}
+
+export interface FishTable {
+  location: string;
+  displayName: string;
+  entries: {
+    id: string | null;
+    itemId: string | null;
+    name: string;
+    baseChance: number;
+    chance: number;
+    removed: boolean;
+    season: Season | null;
+    condition: string | null;
+    isBossFish: boolean;
+  }[];
+  added: LootEntry[];
+}
+
+export interface MonsterDrop {
+  itemId: string;
+  name: string | null;
+  chance: number;
+}
+
+export interface Monster {
+  key: string;
+  displayName: string;
+  edited: boolean;
+  baseDrops: MonsterDrop[];
+  drops: MonsterDrop[];
+}
+
+export interface SpecialOrders {
+  active: { index: number; key: string; name: string; state: string; objectives: { description: string; current: number; max: number }[] }[];
+  catalog: { key: string; name: string; requester: string; completed: boolean }[];
+}
+
 export interface Quest {
   index: number;
   id: string | null;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { api, type Progression, type Quest } from '../api';
+import { api, type Progression, type Quest, type SpecialOrders } from '../api';
 import { FeedbackLine, NumberField, useAction } from '../components';
 import { useI18n } from '../i18n';
 
@@ -24,6 +24,7 @@ export function ProgressionTab({ onChanged }: Props) {
       <CommunityCenterCard {...shared} />
       <MuseumCard {...shared} />
       <QuestsCard onChanged={onChanged} />
+      <SpecialOrdersCard onChanged={onChanged} />
       <FlagsCard onChanged={onChanged} />
     </div>
   );
@@ -260,6 +261,60 @@ function FlagsCard({ onChanged }: Props) {
           </li>
         ))}
       </ul>
+      <FeedbackLine feedback={feedback} />
+    </section>
+  );
+}
+
+function SpecialOrdersCard({ onChanged }: Props) {
+  const { t } = useI18n();
+  const { run, feedback, busy } = useAction(onChanged);
+  const [orders, setOrders] = useState<SpecialOrders | null>(null);
+
+  useEffect(() => {
+    api<SpecialOrders>('GET', '/api/quests/special-orders').then(setOrders);
+  }, []);
+
+  if (!orders) return null;
+  return (
+    <section class="card">
+      <h3>{t('so.title')}</h3>
+      <h4>{t('so.active')}</h4>
+      {orders.active.length === 0 && <p class="muted">{t('so.none')}</p>}
+      <ul class="plain-list">
+        {orders.active.map((o) => (
+          <li key={o.index}>
+            <span>
+              {o.name} <span class="muted">· {o.state}</span>
+              {o.objectives.map((obj, i) => (
+                <span key={i} class="muted">
+                  <br />
+                  {obj.description} ({obj.current}/{obj.max})
+                </span>
+              ))}
+            </span>
+            {o.state === 'InProgress' && (
+              <button disabled={busy} onClick={() => run(() => api<SpecialOrders>('POST', `/api/quests/special-orders/${o.index}/complete`), setOrders)}>
+                {t('so.complete')}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <h4>{t('so.catalog')}</h4>
+      <div class="check-grid">
+        {orders.catalog.map((o) => (
+          <label key={o.key} class="check" title={o.key}>
+            <input
+              type="checkbox"
+              checked={o.completed}
+              disabled={busy}
+              onChange={(e) => run(() => api<SpecialOrders>('PUT', '/api/quests/special-orders/completed', { key: o.key, value: (e.target as HTMLInputElement).checked }), setOrders)}
+            />{' '}
+            {o.name} <span class="muted">({o.requester})</span>
+          </label>
+        ))}
+      </div>
       <FeedbackLine feedback={feedback} />
     </section>
   );

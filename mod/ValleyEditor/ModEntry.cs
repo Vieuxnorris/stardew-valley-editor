@@ -37,6 +37,7 @@ internal sealed class ModEntry : Mod
         var rules = new RulesService(helper);
         MinePatches.Apply(harmony, this.Monitor);
         var cheats = new CheatsService(helper, this.state, harmony, this.Monitor);
+        _ = new FishingService(helper, harmony, this.Monitor);
 
         var sprites = new ItemSprites(this.dispatcher);
         var items = new ItemsDomain(this.dispatcher, this.state, helper.ModRegistry, sprites);
@@ -51,6 +52,8 @@ internal sealed class ModEntry : Mod
             new QuestsDomain(this.dispatcher, this.state),
             new NpcsDomain(this.dispatcher, this.state, sprites),
             new RulesDomain(this.dispatcher, this.state, rules, cheats),
+            new FishingDomain(this.dispatcher, this.state, rules),
+            new MonstersDomain(this.dispatcher, this.state, rules),
         };
         foreach (Domain domain in domains)
             domain.Register(router);

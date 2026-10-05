@@ -7,10 +7,10 @@ const PAGE_SIZE = 60;
 const SEARCH_DELAY_MS = 250;
 
 /** Searchable list of every vanilla and modded item; calls onPick with the chosen one. */
-export function ItemCatalog({ picked, onPick }: { picked: CatalogEntry | null; onPick: (entry: CatalogEntry) => void }) {
+export function ItemCatalog({ picked, onPick, fixedType }: { picked: CatalogEntry | null; onPick: (entry: CatalogEntry) => void; fixedType?: string }) {
   const { t } = useI18n();
   const [query, setQuery] = useState('');
-  const [type, setType] = useState('');
+  const [type, setType] = useState(fixedType ?? '');
   const [mod, setMod] = useState('');
   const [facets, setFacets] = useState<Facets | null>(null);
   const [page, setPage] = useState<CatalogPage | null>(null);
@@ -42,14 +42,16 @@ export function ItemCatalog({ picked, onPick }: { picked: CatalogEntry | null; o
     <div class="catalog">
       <div class="fields">
         <input type="search" placeholder={t('catalog.search')} value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} aria-label={t('catalog.search')} />
-        <select value={type} onChange={(e) => setType((e.target as HTMLSelectElement).value)} aria-label={t('catalog.allTypes')}>
-          <option value="">{t('catalog.allTypes')}</option>
-          {facets?.types.map((f) => (
-            <option key={f.id} value={f.id}>
-              {t(`type.${f.id}`)} ({f.count})
-            </option>
-          ))}
-        </select>
+        {!fixedType && (
+          <select value={type} onChange={(e) => setType((e.target as HTMLSelectElement).value)} aria-label={t('catalog.allTypes')}>
+            <option value="">{t('catalog.allTypes')}</option>
+            {facets?.types.map((f) => (
+              <option key={f.id} value={f.id}>
+                {t(`type.${f.id}`)} ({f.count})
+              </option>
+            ))}
+          </select>
+        )}
         <select value={mod} onChange={(e) => setMod((e.target as HTMLSelectElement).value)} aria-label={t('catalog.allMods')}>
           <option value="">{t('catalog.allMods')}</option>
           {facets?.mods.map((f) => (

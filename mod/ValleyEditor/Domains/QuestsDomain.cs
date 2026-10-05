@@ -1,7 +1,11 @@
 using System;
 using System.Linq;
 using StardewValley;
+using Newtonsoft.Json.Linq;
 using StardewValley.Quests;
+using StardewValley.SpecialOrders;
+using StardewValley.SpecialOrders.Objectives;
+using StardewValley.TokenizableStrings;
 using ValleyEditor.Server;
 
 namespace ValleyEditor.Domains;
@@ -36,6 +40,39 @@ internal sealed class QuestsDomain : Domain
             });
         });
 
+        router.Get("/api/quests/special-orders", _ => this.Read(SpecialOrders));
+
+        // fill every objective of an active order, then let the game complete it (rewards included)
+        router.Post("/api/quests/special-orders/{index}/complete", request =>
+        {
+            int index = ParseIndex(request);
+            return this.Write(() =>
+            {
+                FarmerTeam team = Game1.player.team;
+                if (index >= team.specialOrders.Count)
+                    throw new ApiException(404, $"No active special order at position {index}.");
+                SpecialOrder order = team.specialOrders[index];
+                foreach (OrderObjective objective in order.objectives)
+                    objective.SetCount(objective.GetMaxCount());
+                order.CheckCompletion();
+                return SpecialOrders();
+            });
+        });
+
+        router.Put("/api/quests/special-orders/completed", request =>
+        {
+            string key = request.BodyObject.Value<string>("key") ?? throw new ApiException(400, "'key' is required.");
+            bool value = request.BodyObject["value"]?.Type == JTokenType.Boolean ? request.BodyObject.Value<bool>("value") : throw new ApiException(400, "'value' must be true or false.");
+            return this.Write(() =>
+            {
+                if (value)
+                    Game1.player.team.completedSpecialOrders.Add(key);
+                else
+                    Game1.player.team.completedSpecialOrders.Remove(key);
+                return SpecialOrders();
+            });
+        });
+
         router.Post("/api/quests/{index}/complete", request =>
         {
             int index = ParseIndex(request);
@@ -57,6 +94,33 @@ internal sealed class QuestsDomain : Domain
                 return Snapshot();
             });
         });
+    }
+
+    /// <summary>Special orders: the active ones (with objectives) and every order in Data/SpecialOrders with its completed flag.</summary>
+    private static object SpecialOrders()
+    {
+        FarmerTeam team = Game1.player.team;
+        return new
+        {
+            Active = team.specialOrders.Select((order, i) => new
+            {
+                Index = i,
+                Key = order.questKey.Value,
+                Name = order.GetName(),
+                State = order.questState.Value.ToString(),
+                Objectives = order.objectives.Select(o => new { Description = o.GetDescription(), Current = o.GetCount(), Max = o.GetMaxCount() }),
+            }).ToArray(),
+            Catalog = DataLoader.SpecialOrders(Game1.content)
+                .Select(pair => new
+                {
+                    pair.Key,
+                    Name = TokenParser.ParseText(pair.Value.Name) ?? pair.Key,
+                    Requester = pair.Value.Requester,
+                    Completed = team.completedSpecialOrders.Contains(pair.Key),
+                })
+                .OrderBy(o => o.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToArray(),
+        };
     }
 
     private static object Snapshot()

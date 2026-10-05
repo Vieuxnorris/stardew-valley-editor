@@ -97,4 +97,34 @@ public class RuleMathTests
         Assert.Equal(0.75, oreToStone, 6);
         Assert.Equal(1, RuleMath.OreConversion(0).OreToStone);
     }
+
+    [Fact]
+    public void ParseMonsterDrops_ReadsPairs()
+    {
+        var drops = RuleMath.ParseMonsterDrops("766 .75 766 .05 153 .3 96 .005 99 .001");
+        Assert.Equal(5, drops.Count);
+        Assert.Equal(("766", 0.75), drops[0]);
+        Assert.Equal(("99", 0.001), drops[4]);
+    }
+
+    [Fact]
+    public void ParseMonsterDrops_SkipsMalformedAndEmpty()
+    {
+        Assert.Empty(RuleMath.ParseMonsterDrops(""));
+        Assert.Equal(new[] { ("382", 0.5) }, RuleMath.ParseMonsterDrops("382 .5 oops"));
+        Assert.Empty(RuleMath.ParseMonsterDrops("382 notanumber"));
+    }
+
+    [Fact]
+    public void FormatMonsterDrops_RoundTrips()
+    {
+        const string field = "766 0.75 153 0.3 99 0.001";
+        Assert.Equal(field, RuleMath.FormatMonsterDrops(RuleMath.ParseMonsterDrops(field)));
+    }
+
+    [Fact]
+    public void FormatMonsterDrops_ClampsChance()
+    {
+        Assert.Equal("74 1 72 0", RuleMath.FormatMonsterDrops(new[] { ("74", 5.0), ("72", -1.0) }));
+    }
 }
