@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { api, ApiError, hasToken, type Status } from './api';
 import { useI18n } from './i18n';
+import { AnimalsTab } from './tabs/AnimalsTab';
+import { ChestsTab } from './tabs/ChestsTab';
+import { FarmTab } from './tabs/FarmTab';
 import { FishingTab } from './tabs/FishingTab';
 import { InventoryTab } from './tabs/InventoryTab';
 import { MonstersTab } from './tabs/MonstersTab';
@@ -14,7 +17,7 @@ const STATUS_POLL_MS = 2000;
 
 type Connection = { kind: 'loading' } | { kind: 'offline' } | { kind: 'unauthorized' } | { kind: 'ok'; status: Status };
 
-const TABS = ['player', 'inventory', 'npcs', 'world', 'progression', 'fishing', 'monsters', 'rules'] as const;
+const TABS = ['player', 'inventory', 'chests', 'npcs', 'world', 'farm', 'animals', 'progression', 'fishing', 'monsters', 'rules'] as const;
 type Tab = (typeof TABS)[number];
 
 export function App() {
@@ -71,8 +74,11 @@ export function App() {
           <main key={status.saveName}>
             {tab === 'player' && <PlayerTab onChanged={refreshStatus} />}
             {tab === 'inventory' && <InventoryTab onChanged={refreshStatus} />}
+            {tab === 'chests' && <ChestsTab onChanged={refreshStatus} />}
             {tab === 'npcs' && <NpcsTab onChanged={refreshStatus} />}
             {tab === 'world' && <WorldTab onChanged={refreshStatus} />}
+            {tab === 'farm' && <FarmTab onChanged={refreshStatus} />}
+            {tab === 'animals' && <AnimalsTab onChanged={refreshStatus} />}
             {tab === 'progression' && <ProgressionTab onChanged={refreshStatus} />}
             {tab === 'fishing' && <FishingTab onChanged={refreshStatus} />}
             {tab === 'monsters' && <MonstersTab onChanged={refreshStatus} />}

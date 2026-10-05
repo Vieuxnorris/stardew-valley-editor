@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
+using StardewValley.Buildings;
 using StardewValley.ItemTypeDefinitions;
 using ValleyEditor.Server;
 
@@ -106,6 +107,21 @@ internal sealed class ItemSprites
         var pixels = new Color[source.Width * source.Height];
         texture.GetData(0, source, pixels, 0, pixels.Length);
         return (pixels, source.Width, source.Height);
+    }
+
+    /// <summary>A building as the build menu shows it (with its skin and paint). Must run on the game thread.</summary>
+    public static (Color[] Pixels, int Width, int Height) BuildingPixels(Building building)
+    {
+        Texture2D texture = building.paintedTexture ?? building.texture.Value;
+        return ReadPixels(texture, building.getSourceRectForMenu() ?? building.getSourceRect());
+    }
+
+    /// <summary>An animal's first frame (facing down), baby or adult as it is now. Must run on the game thread.</summary>
+    public static (Color[] Pixels, int Width, int Height) AnimalPixels(FarmAnimal animal)
+    {
+        AnimatedSprite sprite = animal.Sprite;
+        var (pixels, width, height) = ReadPixels(sprite.Texture, new Rectangle(0, 0, sprite.SpriteWidth, sprite.SpriteHeight));
+        return Trim(pixels, width, height);
     }
 
     private async Task<byte[]> GetPng(string key, Func<(Color[] Pixels, int Width, int Height)> read)

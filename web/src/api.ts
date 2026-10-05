@@ -311,3 +311,70 @@ export interface Quest {
   completed: boolean;
   daysLeft: number | null;
 }
+
+export interface ChestInfo {
+  id: string;
+  name: string;
+  isFridge: boolean;
+  qualifiedId: string;
+  location: string;
+  locationName: string;
+  x: number | null;
+  y: number | null;
+  used: number;
+  capacity: number;
+  color: string | null;
+}
+
+export interface FieldStats {
+  location: string;
+  displayName: string;
+  crops: number;
+  dry: number;
+  ready: number;
+  dead: number;
+  fruitTrees: number;
+  youngTrees: number;
+}
+
+export interface BuildingInfo {
+  id: string;
+  type: string;
+  name: string;
+  locationName: string;
+  x: number;
+  y: number;
+  daysOfConstructionLeft: number;
+  daysUntilUpgrade: number;
+  upgradeName: string | null;
+  animals: number | null;
+  animalLimit: number | null;
+  upgrades: { type: string; name: string }[];
+}
+
+export interface Farm {
+  fields: FieldStats[];
+  buildings: BuildingInfo[];
+  house: { level: number; maxLevel: number; daysUntilUpgrade: number };
+}
+
+export interface Animal {
+  id: string;
+  name: string;
+  type: string;
+  typeName: string;
+  locationName: string;
+  home: string | null;
+  friendship: number;
+  happiness: number;
+  fullness: number;
+  age: number;
+  daysToMature: number;
+  isAdult: boolean;
+  wasPet: boolean;
+  produce: string | null;
+  mood: string;
+}
+
+export const buildingSpriteUrl = (id: string, version: string) => `/api/building-sprites/${encodeURIComponent(id)}?token=${token ?? ''}&v=${encodeURIComponent(version)}`;
+export const animalSpriteUrl = (id: string, version: string) => `/api/animal-sprites/${encodeURIComponent(id)}?token=${token ?? ''}&v=${encodeURIComponent(version)}`;

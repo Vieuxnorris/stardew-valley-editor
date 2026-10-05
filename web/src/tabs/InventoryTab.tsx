@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { api, type CatalogEntry, type Inventory, type ItemStack } from '../api';
 import { FeedbackLine, ItemIcon, NumberField, QualitySelect, useAction } from '../components';
@@ -9,8 +10,6 @@ const QUALITY_CLASS: Record<number, string> = { 1: 'silver', 2: 'gold', 4: 'irid
 export function InventoryTab({ onChanged }: { onChanged: () => void }) {
   const { t } = useI18n();
   const [inventory, setInventory] = useState<Inventory | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { run, feedback } = useAction(onChanged);
 
@@ -20,14 +19,15 @@ export function InventoryTab({ onChanged }: { onChanged: () => void }) {
 
   if (!inventory) return <p>{error ?? t('common.loading')}</p>;
 
-  const swap = (from: number, to: number) => from !== to && run(() => api<Inventory>('POST', '/api/inventory/swap', { from, to }), setInventory);
-  const selectedItem = selected !== null ? inventory.slots[selected] : null;
-
   return (
     <div class="stack">
-      <section class="card">
-        <div class="card-header">
-          <h3>{t('inv.backpack')}</h3>
+      <ItemGrid
+        basePath="/api/inventory"
+        container={inventory}
+        setContainer={setInventory}
+        onChanged={onChanged}
+        title={t('inv.backpack')}
+        actions={
           <label class="inline">
             {t('inv.size')}
             <select value={inventory.size} onChange={(e) => run(() => api<Inventory>('PUT', '/api/inventory/size', { size: Number((e.target as HTMLSelectElement).value) }), setInventory)}>
@@ -38,44 +38,76 @@ export function InventoryTab({ onChanged }: { onChanged: () => void }) {
               ))}
             </select>
           </label>
-        </div>
-        <p class="muted">{t('inv.dragHint')}</p>
-        <div class="slots">
-          {inventory.slots.map((item, i) => (
-            <button
-              key={i}
-              class={`slot ${selected === i ? 'active' : ''}`}
-              draggable={item !== null}
-              onClick={() => setSelected(i)}
-              onDragStart={() => setDragFrom(i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (dragFrom !== null) swap(dragFrom, i);
-                setDragFrom(null);
-              }}
-              aria-label={item ? `${item.name} ×${item.stack}` : t('inv.empty')}
-            >
-              {item && (
-                <>
-                  <ItemIcon qualifiedId={item.qualifiedId} name={item.name} />
-                  {item.stack > 1 && <span class="stack-count">{item.stack}</span>}
-                  {QUALITY_CLASS[item.quality] && <span class={`star ${QUALITY_CLASS[item.quality]}`}>★</span>}
-                </>
-              )}
-            </button>
-          ))}
-        </div>
-        <FeedbackLine feedback={feedback} />
-        {selectedItem && selected !== null && <SlotEditor key={`${selected}-${selectedItem.qualifiedId}`} slot={selected} item={selectedItem} onChanged={onChanged} setInventory={setInventory} />}
-      </section>
-
-      <AddItemCard onChanged={onChanged} setInventory={setInventory} />
+        }
+      />
+      <FeedbackLine feedback={feedback} />
+      <AddItemCard basePath="/api/inventory" onChanged={onChanged} setContainer={setInventory} />
     </div>
   );
 }
 
-function SlotEditor({ slot, item, onChanged, setInventory }: { slot: number; item: ItemStack; onChanged: () => void; setInventory: (inv: Inventory) => void }) {
+type GridProps = {
+  /** The slot routes: GET/POST at the path, PATCH/DELETE at path/slot, POST path/swap. */
+  basePath: string;
+  container: Inventory;
+  setContainer: (container: Inventory) => void;
+  onChanged: () => void;
+  title: ComponentChildren;
+  actions?: ComponentChildren;
+};
+
+/** A slot grid (backpack or chest): drag to move, click to edit a stack. */
+export function ItemGrid({ basePath, container, setContainer, onChanged, title, actions }: GridProps) {
+  const { t } = useI18n();
+  const [selected, setSelected] = useState<number | null>(null);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const { run, feedback } = useAction(onChanged);
+
+  const swap = (from: number, to: number) => from !== to && run(() => api<Inventory>('POST', `${basePath}/swap`, { from, to }), setContainer);
+  const selectedItem = selected !== null ? container.slots[selected] : null;
+
+  return (
+    <section class="card">
+      <div class="card-header">
+        <h3 class="inline">{title}</h3>
+        {actions}
+      </div>
+      <p class="muted">{t('inv.dragHint')}</p>
+      <div class="slots">
+        {container.slots.map((item, i) => (
+          <button
+            key={i}
+            class={`slot ${selected === i ? 'active' : ''}`}
+            draggable={item !== null}
+            onClick={() => setSelected(i)}
+            onDragStart={() => setDragFrom(i)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragFrom !== null) swap(dragFrom, i);
+              setDragFrom(null);
+            }}
+            aria-label={item ? `${item.name} ×${item.stack}` : t('inv.empty')}
+          >
+            {item && (
+              <>
+                <ItemIcon qualifiedId={item.qualifiedId} name={item.name} />
+                {item.stack > 1 && <span class="stack-count">{item.stack}</span>}
+                {QUALITY_CLASS[item.quality] && <span class={`star ${QUALITY_CLASS[item.quality]}`}>★</span>}
+              </>
+            )}
+          </button>
+        ))}
+      </div>
+      <FeedbackLine feedback={feedback} />
+      {selectedItem && selected !== null && (
+        <SlotEditor key={`${basePath}-${selected}-${selectedItem.qualifiedId}`} basePath={basePath} slot={selected} item={selectedItem} onChanged={onChanged} setContainer={setContainer} />
+      )}
+    </section>
+  );
+}
+
+function SlotEditor({ basePath, slot, item, onChanged, setContainer }: { basePath: string; slot: number; item: ItemStack; onChanged: () => void; setContainer: (inv: Inventory) => void }) {
   const { t } = useI18n();
   const { run, feedback, busy } = useAction(onChanged);
   const [stack, setStack] = useState(String(item.stack));
@@ -90,7 +122,7 @@ function SlotEditor({ slot, item, onChanged, setInventory }: { slot: number; ite
         class="fields"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => api<Inventory>('PATCH', `/api/inventory/${slot}`, { stack: Number(stack), ...(item.canHaveQuality ? { quality } : {}) }), setInventory);
+          run(() => api<Inventory>('PATCH', `${basePath}/${slot}`, { stack: Number(stack), ...(item.canHaveQuality ? { quality } : {}) }), setContainer);
         }}
       >
         {item.maxStack > 1 && <NumberField label={`${t('inv.stack')} (max ${item.maxStack})`} value={stack} min={1} max={item.maxStack} onInput={setStack} />}
@@ -98,7 +130,7 @@ function SlotEditor({ slot, item, onChanged, setInventory }: { slot: number; ite
         <button type="submit" disabled={busy}>
           {t('common.apply')}
         </button>
-        <button type="button" class="danger" disabled={busy} onClick={() => run(() => api<Inventory>('DELETE', `/api/inventory/${slot}`), setInventory)}>
+        <button type="button" class="danger" disabled={busy} onClick={() => run(() => api<Inventory>('DELETE', `${basePath}/${slot}`), setContainer)}>
           {t('inv.delete')}
         </button>
       </form>
@@ -107,7 +139,7 @@ function SlotEditor({ slot, item, onChanged, setInventory }: { slot: number; ite
   );
 }
 
-function AddItemCard({ onChanged, setInventory }: { onChanged: () => void; setInventory: (inv: Inventory) => void }) {
+export function AddItemCard({ basePath, onChanged, setContainer, title }: { basePath: string; onChanged: () => void; setContainer: (inv: Inventory) => void; title?: string }) {
   const { t } = useI18n();
   const { run, feedback, busy } = useAction(onChanged);
   const [picked, setPicked] = useState<CatalogEntry | null>(null);
@@ -116,7 +148,7 @@ function AddItemCard({ onChanged, setInventory }: { onChanged: () => void; setIn
 
   return (
     <section class="card">
-      <h3>{t('inv.add')}</h3>
+      <h3>{title ?? t('inv.add')}</h3>
       <div class="add-item">
         <ItemCatalog picked={picked} onPick={setPicked} />
         <div class="add-form">
@@ -134,7 +166,7 @@ function AddItemCard({ onChanged, setInventory }: { onChanged: () => void; setIn
                 class="fields"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  run(() => api<Inventory>('POST', '/api/inventory', { qualifiedId: picked.qualifiedId, stack: Number(stack), quality: picked.type === '(O)' ? quality : 0 }), setInventory);
+                  run(() => api<Inventory>('POST', basePath, { qualifiedId: picked.qualifiedId, stack: Number(stack), quality: picked.type === '(O)' ? quality : 0 }), setContainer);
                 }}
               >
                 <NumberField label={t('inv.stack')} value={stack} min={1} onInput={setStack} />

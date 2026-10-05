@@ -1,6 +1,4 @@
-using System;
 using System.Linq;
-using Newtonsoft.Json.Linq;
 using StardewValley;
 using ValleyEditor.Server;
 
@@ -20,85 +18,7 @@ internal sealed class InventoryDomain : Domain
     {
         router.Get("/api/inventory", _ => this.Read(Snapshot));
 
-        // add an item, into a given empty slot or wherever it fits
-        router.Post("/api/inventory", request =>
-        {
-            JObject body = request.BodyObject;
-            string id = body.Value<string>("qualifiedId") ?? throw new ApiException(400, "'qualifiedId' is required.");
-            int stack = OptInt(body, "stack", 1, int.MaxValue) ?? 1;
-            int quality = OptQuality(body) ?? 0;
-            int? slot = OptInt(body, "slot", 0, MaxSize - 1);
-
-            return this.Write(() =>
-            {
-                Farmer player = Game1.player;
-                Item item = ItemRegistry.Create(id, 1, quality, allowNull: true)
-                    ?? throw new ApiException(404, $"No item with ID '{id}'.");
-                item.Stack = Math.Min(stack, item.maximumStackSize());
-                if (!ItemJson.CanHaveQuality(item))
-                    item.Quality = 0;
-
-                if (slot.HasValue)
-                {
-                    CheckSlot(player, slot.Value);
-                    if (player.Items[slot.Value] != null)
-                        throw new ApiException(409, $"Slot {slot.Value} isn't empty.");
-                    player.Items[slot.Value] = item;
-                }
-                else if (!player.addItemToInventoryBool(item))
-                    throw new ApiException(409, "The backpack is full.");
-
-                return Snapshot();
-            });
-        });
-
-        router.Patch("/api/inventory/{slot}", request =>
-        {
-            int slot = ParseSlot(request);
-            JObject body = request.BodyObject;
-            int? stack = OptInt(body, "stack", 1, int.MaxValue);
-            int? quality = OptQuality(body);
-
-            return this.Write(() =>
-            {
-                Farmer player = Game1.player;
-                CheckSlot(player, slot);
-                Item item = player.Items[slot] ?? throw new ApiException(404, $"Slot {slot} is empty.");
-                if (stack.HasValue)
-                    item.Stack = Math.Min(stack.Value, item.maximumStackSize());
-                if (quality.HasValue && ItemJson.CanHaveQuality(item))
-                    item.Quality = quality.Value;
-                return Snapshot();
-            });
-        });
-
-        router.Delete("/api/inventory/{slot}", request =>
-        {
-            int slot = ParseSlot(request);
-            return this.Write(() =>
-            {
-                Farmer player = Game1.player;
-                CheckSlot(player, slot);
-                player.Items[slot] = null;
-                return Snapshot();
-            });
-        });
-
-        router.Post("/api/inventory/swap", request =>
-        {
-            JObject body = request.BodyObject;
-            int from = OptInt(body, "from", 0, MaxSize - 1) ?? throw new ApiException(400, "'from' is required.");
-            int to = OptInt(body, "to", 0, MaxSize - 1) ?? throw new ApiException(400, "'to' is required.");
-
-            return this.Write(() =>
-            {
-                Farmer player = Game1.player;
-                CheckSlot(player, from);
-                CheckSlot(player, to);
-                (player.Items[from], player.Items[to]) = (player.Items[to], player.Items[from]);
-                return Snapshot();
-            });
-        });
+        SlotRoutes.Register(router, "/api/inventory", this.Write, _ => Backpack(), _ => Snapshot());
 
         router.Put("/api/inventory/size", request =>
         {
@@ -124,30 +44,11 @@ internal sealed class InventoryDomain : Domain
         });
     }
 
-    private static object Snapshot()
+    private static ItemContainer Backpack()
     {
         Farmer player = Game1.player;
-        return new { Size = player.MaxItems, Slots = ItemJson.Slots(player.Items, player.MaxItems) };
+        return new ItemContainer(player.Items, player.MaxItems, item => player.addItemToInventoryBool(item));
     }
 
-    private static int? OptQuality(JObject body)
-    {
-        int? quality = OptInt(body, "quality", 0, 4);
-        if (quality.HasValue && !ItemJson.Qualities.Contains(quality.Value))
-            throw new ApiException(400, "'quality' must be 0 (normal), 1 (silver), 2 (gold) or 4 (iridium).");
-        return quality;
-    }
-
-    private static int ParseSlot(ApiRequest request)
-    {
-        return int.TryParse(request.Params["slot"], out int slot) && slot >= 0
-            ? slot
-            : throw new ApiException(400, "The slot must be a non-negative integer.");
-    }
-
-    private static void CheckSlot(Farmer player, int slot)
-    {
-        if (slot >= player.MaxItems || slot >= player.Items.Count)
-            throw new ApiException(400, $"Slot {slot} is outside the backpack ({player.MaxItems} slots).");
-    }
+    private static object Snapshot() => new { Size = Game1.player.MaxItems, Slots = Backpack().Slots() };
 }

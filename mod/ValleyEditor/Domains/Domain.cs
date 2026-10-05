@@ -61,7 +61,7 @@ internal abstract class Domain
     }
 
     /// <summary>Read an optional integer field from a JSON body, enforcing a range.</summary>
-    protected static int? OptInt(JObject body, string name, int min, int max)
+    internal static int? OptInt(JObject body, string name, int min, int max)
     {
         JToken? token = body[name];
         if (token is null || token.Type == JTokenType.Null)
