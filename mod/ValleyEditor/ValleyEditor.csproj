@@ -25,6 +25,7 @@
     <None Include="wwwroot/**" CopyToOutputDirectory="PreserveNewest" />
     <!-- the repo README ships in the mod folder: install steps, features, credits -->
     <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
