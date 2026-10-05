@@ -1,5 +1,23 @@
 # Roadmap — « Valley Editor » : éditeur live complet pour Stardew Valley
 
+## État au 2026-10-05
+
+| Phase | État |
+|---|---|
+| 0 — Labo et fondations | ✅ |
+| 1 — Tranche verticale | ✅ validée en jeu |
+| 2 — Joueur et inventaire | ✅ validée en jeu |
+| 3 — Monde et temps | ✅ validée en jeu (carte du monde cliquable ajoutée) |
+| 4 — Relations et PNJ | ✅ validée via l'API |
+| 5 — Règles par save + mode OP | ✅, plus la pêche et le loot (tables de pêche, coffre au trésor, loot des monstres) |
+| 6 — Ferme et bâtiments | ✅ : carte rendue cliquable, intérieurs, machines, animaux et espèces, animal de compagnie, coffres |
+| 6b — Collections et objets spéciaux | ✅ |
+| 6c — Éditeur d'items | ✅ |
+| 7 — Finition | ✅ historique et annulation, GMCM (FR/EN), README, `um publish check` (seuls des faux positifs restent, voir MODLOG) ; ⏳ restent le paquet Nexus, la vidéo démo et la note de terrain, à faire avec l'accord de Julien |
+
+Plusieurs ajouts récents sont encore à vérifier en jeu : désert sur la carte, intérieurs, machines,
+espèces animales, éditeur d'items, annulation, GMCM.
+
 ## Contexte
 
 Julien veut un **éditeur complet** pour Stardew Valley, plus puissant que CJB Cheats Menu (déjà installé).

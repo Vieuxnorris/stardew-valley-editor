@@ -16,7 +16,7 @@ Règles data-driven via Content API (`AssetRequested`, priorité Late) ; règles
 Raison : SMAPI déjà installé, code du jeu lisible en C#, live sans quitter le jeu.
 
 ## Backups / restauration
-- 2026-10-05 : `C:\Users\Julien\.universal-modder\backups\stardew-saves\20261005-162702.zip` (toutes les saves, 33 fichiers)
+- 2026-10-05 : `%USERPROFILE%\.universal-modder\backups\stardew-saves\20261005-162702.zip` (toutes les saves, 33 fichiers)
 - Restaurer : `um backup restore stardew-saves` (ou dézipper dans `%APPDATA%\StardewValley\Saves`)
 
 ## Journal
@@ -76,3 +76,7 @@ Raison : SMAPI déjà installé, code du jeu lisible en C#, live sans quitter le
 - Demande : construction gratuite. Prefix sur `CarpenterMenu.DoesFarmerHaveEnoughResourcesToBuild` / `ConsumeResources`. Les améliorations de maison sont codées en dur dans `GameLocation.houseUpgradeAccept` (privée, niveaux 0-2), remplacée par un prefix sans coût.
 - Construction instantanée : `Building.FinishConstruction()` une fois aucun menu ouvert. La maison reste à 1 nuit, car `Farmer.dayupdate` déplace les meubles et change la carte.
 - Artisanat gratuit : prefix sur `CraftingRecipe.doesFarmerHaveIngredientsInInventory` / `consumeIngredients` (couvre aussi la cuisine).
+- 2026-10-05 — Historique et annulation. Le chemin de la requête suit le code jusqu'au thread du jeu via `AsyncLocal` (`RequestContext`). Les domaines enregistrent un undo avec `UndoCapture.Remember` (ThreadStatic, le premier appel gagne) avant de modifier quoi que ce soit. Pour cloner les objets, on passe par `SaveSerializer.GetSerializer(typeof(Item))`, parce que `getOne()` perd les stats des armes et les accessoires des cannes. L'historique est vidé à chaque sauvegarde : un undo de la veille écraserait toute la journée.
+- Machines : pour terminer, `MinutesUntilReady = 0` puis `minutesElapsed(0)` (le même chemin que l'horloge). Les machines `OnlyCompleteOvernight` passent ensuite en `readyForHarvest` à la main. Le mode « instantané » (multiplicateur 0) met les données à 10 min, et un tick toutes les 30 frames termine les machines concernées.
+- Animaux : réglages par espèce dans `Data/FarmAnimals` (DaysToProduce, DaysToMature, luxe garanti via `DeluxeProduceMinimumFriendship=0` et `DeluxeProduceCareDivisor≈0`). « Produire maintenant » : les produits déposés la nuit vont dans le sac, ceux récoltés à l'outil passent par `currentProduce`.
+- `um publish check` : les 10 « FAIL game file copied verbatim » sont de faux positifs. Ce sont nos propres fichiers comparés à la copie déployée dans `Mods/ValleyEditor`, qui est dans le dossier du jeu.
