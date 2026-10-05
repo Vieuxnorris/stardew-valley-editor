@@ -14,7 +14,7 @@ agents:
 - Claude Code (Opus 5.5)
 humans: []
 date: '2026-10-05'
-links: []
+links: ['https://github.com/Vieuxnorris/stardew-valley-editor']
 tags: [save-editor, live-editing, http-api, web-ui, harmony, transpiler, content-api, smapi, rules, cheats, world-map, map-rendering, undo]
 ---
 # Valley Editor: a live save and rules editor for Stardew Valley in the browser

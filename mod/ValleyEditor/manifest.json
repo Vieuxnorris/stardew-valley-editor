@@ -1,10 +1,10 @@
 {
   "Name": "Valley Editor",
-  "Author": "Julien",
+  "Author": "Vieuxnorris",
   "Version": "1.0.0",
   "Description": "Live save & rules editor for Stardew Valley, in your browser.",
   "UniqueID": "Julien.ValleyEditor",
   "EntryDll": "ValleyEditor.dll",
   "MinimumApiVersion": "4.0.0",
-  "UpdateKeys": []
+  "UpdateKeys": [ "GitHub:Vieuxnorris/stardew-valley-editor" ]
 }
