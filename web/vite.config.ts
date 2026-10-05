@@ -9,6 +9,14 @@ export default defineConfig({
   build: {
     outDir: '../mod/ValleyEditor/wwwroot',
     emptyOutDir: true,
+    // stable names: the mod sends no-store, and SMAPI deploys don't delete stale hashed files
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name][extname]',
+      },
+    },
   },
   server: {
     proxy: {
