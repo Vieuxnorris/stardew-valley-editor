@@ -6,6 +6,7 @@ using HarmonyLib;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using ValleyEditor.Domains;
+using ValleyEditor.Integrations;
 using ValleyEditor.Rules;
 using ValleyEditor.Server;
 using ValleyEditor.Sprites;
@@ -27,6 +28,7 @@ internal sealed class ModEntry : Mod
     private readonly EditorState state = new();
     private ModConfig config = new();
     private WebServer? server;
+    private Router? router;
 
     public override void Entry(IModHelper helper)
     {
@@ -63,17 +65,19 @@ internal sealed class ModEntry : Mod
         foreach (Domain domain in domains)
             domain.Register(router);
 
-        this.server = new WebServer(this.config.Port, Path.Combine(helper.DirectoryPath, "wwwroot"), router, this.Monitor);
-        try
-        {
-            this.server.Start();
-            this.Monitor.Log($"Editor running at {this.server.Url} (type 'editor' in this console to open it).", LogLevel.Info);
-        }
-        catch (HttpListenerException ex)
-        {
-            this.Monitor.Log($"Couldn't start the editor on port {this.config.Port}: {ex.Message}. Change 'Port' in config.json.", LogLevel.Error);
-            this.server = null;
-        }
+        this.router = router;
+        this.StartServer();
+
+        helper.Events.GameLoop.GameLaunched += (_, _) => GenericModConfigMenu.Register(
+            helper,
+            this.ModManifest,
+            getConfig: () => this.config,
+            setConfig: config => this.config = config,
+            onSaved: () =>
+            {
+                if (this.server?.Port != this.config.Port)
+                    this.StartServer();
+            });
 
         helper.Events.GameLoop.UpdateTicked += (_, _) =>
         {
@@ -101,6 +105,23 @@ internal sealed class ModEntry : Mod
         };
 
         helper.ConsoleCommands.Add("editor", "Opens Valley Editor in your browser.", (_, _) => this.OpenBrowser());
+    }
+
+    /// <summary>Start the web server on the configured port, stopping the previous one if any.</summary>
+    private void StartServer()
+    {
+        this.server?.Dispose();
+        this.server = new WebServer(this.config.Port, Path.Combine(this.Helper.DirectoryPath, "wwwroot"), this.router!, this.Monitor);
+        try
+        {
+            this.server.Start();
+            this.Monitor.Log($"Editor running at {this.server.Url} (type 'editor' in this console to open it).", LogLevel.Info);
+        }
+        catch (HttpListenerException ex)
+        {
+            this.Monitor.Log($"Couldn't start the editor on port {this.config.Port}: {ex.Message}. Change 'Port' in config.json.", LogLevel.Error);
+            this.server = null;
+        }
     }
 
     private void OpenBrowser()

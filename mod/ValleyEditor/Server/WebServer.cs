@@ -53,6 +53,8 @@ internal sealed class WebServer : IDisposable
     public string Token { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
 
     /// <summary>The URL to open in a browser, token included.</summary>
+    public int Port => this.port;
+
     public string Url => $"http://localhost:{this.port}/?token={this.Token}";
 
     public WebServer(int port, string webRoot, Router router, IMonitor monitor)

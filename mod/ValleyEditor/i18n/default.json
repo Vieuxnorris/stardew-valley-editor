@@ -1,0 +1,7 @@
+{
+  "config.intro": "Valley Editor runs a small website on your computer. Type 'editor' in the SMAPI console to open it in your browser.",
+  "config.port": "Port",
+  "config.port.tooltip": "The localhost port the editor listens on (default 47800). Change it if another program uses it; the editor restarts on the new port when you save.",
+  "config.open-browser": "Open the editor when a save loads",
+  "config.open-browser.tooltip": "Opens the editor in your browser each time you load a save."
+}
