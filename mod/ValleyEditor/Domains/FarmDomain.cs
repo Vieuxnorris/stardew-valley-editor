@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.Buildings;
 using StardewValley.GameData.Buildings;
@@ -81,6 +82,43 @@ internal sealed class FarmDomain : Domain
         router.Get("/api/building-sprites/{building}", async request =>
             new BinaryResult(await this.sprites.RenderPng(() => ItemSprites.BuildingPixels(FindBuilding(request.Params["building"]))), "image/png"));
 
+        // a location drawn like in game, for the clickable buildings map
+        router.Get("/api/farm/map/{location}/image", async request =>
+            new BinaryResult(await this.sprites.RenderPng(() => MapRenderer.Render(FindLocation(request.Params["location"]))), "image/png"));
+
+        router.Put("/api/farm/buildings/{building}/skin", request =>
+        {
+            string? skin = request.BodyObject.Value<string>("skin");
+            return this.Write(() =>
+            {
+                Building building = FindBuilding(request.Params["building"]);
+                BuildingData data = building.GetData() ?? throw new ApiException(409, "This building has no data.");
+                if (skin != null && !data.Skins.Any(s => s.Id == skin))
+                    throw new ApiException(400, $"'{building.buildingType.Value}' has no skin '{skin}'.");
+
+                // like the game's skin menu: new skin, default paint
+                building.skinId.Value = skin;
+                building.netBuildingPaintColor.Value.Color1Default.Value = true;
+                building.netBuildingPaintColor.Value.Color2Default.Value = true;
+                building.netBuildingPaintColor.Value.Color3Default.Value = true;
+                building.resetTexture();
+                return Snapshot();
+            });
+        });
+
+        router.Post("/api/farm/buildings/{building}/animal-door", request =>
+        {
+            bool open = request.BodyObject.Value<bool?>("open") ?? throw new ApiException(400, "'open' must be true or false.");
+            return this.Write(() =>
+            {
+                Building building = FindBuilding(request.Params["building"]);
+                if (building.GetIndoors() is not AnimalHouse)
+                    throw new ApiException(409, "This building has no animal door.");
+                building.animalDoorOpen.Value = open;
+                return Snapshot();
+            });
+        });
+
         // the farmhouse is rebuilt overnight by the game (furniture moved, new map), so upgrades are scheduled for tomorrow
         router.Post("/api/farm/house", request =>
         {
@@ -117,13 +155,31 @@ internal sealed class FarmDomain : Domain
                 .OrderBy(f => f.Location == "Farm" ? 0 : 1)
                 .ThenBy(f => f.DisplayName, StringComparer.CurrentCultureIgnoreCase)
                 .ToArray(),
+            // the locations with buildings, for the map
+            BuildingLocations = Locations()
+                .Where(l => l.buildings.Count > 0)
+                .Select(l =>
+                {
+                    Point size = MapRenderer.Size(l);
+                    return new { Location = l.NameOrUniqueName, DisplayName = l.DisplayName ?? l.Name, Width = size.X, Height = size.Y };
+                })
+                .ToArray(),
             Buildings = AllBuildings()
                 .Select(b =>
                 {
                     BuildingData? data = b.Building.GetData();
+                    Rectangle sprite = MapRenderer.BuildingBounds(b.Building);
+                    const int tile = MapRenderer.TileSize;
                     return new
                     {
                         b.Id,
+                        Location = b.Location.NameOrUniqueName,
+                        Sprite = new { sprite.X, sprite.Y, sprite.Width, sprite.Height },
+                        Footprint = new { X = b.Building.tileX.Value * tile, Y = b.Building.tileY.Value * tile, Width = b.Building.tilesWide.Value * tile, Height = b.Building.tilesHigh.Value * tile },
+                        SkinId = b.Building.skinId.Value,
+                        Skins = data?.Skins.Select(s => new { s.Id, Name = s.Name is { Length: > 0 } skinName ? TokenParser.ParseText(skinName) ?? s.Id : s.Id }).ToArray() ?? Array.Empty<object>(),
+                        HasAnimalDoor = b.Building.GetIndoors() is AnimalHouse,
+                        AnimalDoorOpen = b.Building.animalDoorOpen.Value,
                         Type = b.Building.buildingType.Value,
                         Name = BuildingName(b.Building.buildingType.Value, data),
                         LocationName = b.Location.DisplayName ?? b.Location.Name,

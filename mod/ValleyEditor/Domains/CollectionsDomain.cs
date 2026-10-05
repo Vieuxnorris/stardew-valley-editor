@@ -106,6 +106,7 @@ internal sealed class CollectionsDomain : Domain
                     Description = TokenParser.ParseText(pair.Value.Description) ?? "",
                     Unlocked = GameStateQuery.CheckConditions(pair.Value.UnlockedCondition),
                     Editable = TrySetUnlocked(pair.Value.UnlockedCondition, true, apply: false),
+                    Condition = pair.Value.UnlockedCondition,
                 })
                 .ToArray(),
         };
@@ -218,6 +219,7 @@ internal sealed class CollectionsDomain : Domain
             bool settable = args.Length >= 3 && (args[0], args[1]) switch
             {
                 ("PLAYER_HAS_MAIL", "Current" or "Host" or "Any" or "All") => true,
+                ("PLAYER_HAS_SEEN_EVENT", "Current" or "Host" or "Any" or "All") => true, // Bear's Knowledge, Spring Onion Mastery
                 ("PLAYER_STAT", "Current" or "Host" or "Any" or "All") => args.Length >= 4 && uint.TryParse(args[3], out _),
                 _ => false,
             };
@@ -226,12 +228,13 @@ internal sealed class CollectionsDomain : Domain
             if (!apply)
                 continue;
 
-            if (args[0] == "PLAYER_HAS_MAIL")
+            if (args[0] is "PLAYER_HAS_MAIL" or "PLAYER_HAS_SEEN_EVENT")
             {
+                var flags = args[0] == "PLAYER_HAS_MAIL" ? Game1.player.mailReceived : Game1.player.eventsSeen;
                 if (value)
-                    Game1.player.mailReceived.Add(args[2]);
+                    flags.Add(args[2]);
                 else
-                    Game1.player.mailReceived.Remove(args[2]);
+                    flags.Remove(args[2]);
             }
             else
                 Game1.player.stats.Set(args[2], value ? uint.Parse(args[3]) : 0u);

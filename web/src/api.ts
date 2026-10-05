@@ -350,11 +350,19 @@ export interface BuildingInfo {
   animals: number | null;
   animalLimit: number | null;
   upgrades: { type: string; name: string }[];
+  location: string;
+  sprite: { x: number; y: number; width: number; height: number };
+  footprint: { x: number; y: number; width: number; height: number };
+  skinId: string | null;
+  skins: { id: string; name: string }[];
+  hasAnimalDoor: boolean;
+  animalDoorOpen: boolean;
 }
 
 export interface Farm {
   fields: FieldStats[];
   buildings: BuildingInfo[];
+  buildingLocations: { location: string; displayName: string; width: number; height: number }[];
   house: { level: number; maxLevel: number; daysUntilUpgrade: number };
 }
 
@@ -397,7 +405,9 @@ export const petSpriteUrl = (id: string) => `/api/pet-sprites/${encodeURICompone
 
 export interface Collections {
   categories: { id: string; done: number; total: number }[];
-  powers: { id: string; name: string; description: string; unlocked: boolean; editable: boolean }[];
+  powers: { id: string; name: string; description: string; unlocked: boolean; editable: boolean; condition: string | null }[];
 }
 
 export const powerSpriteUrl = (id: string) => `/api/power-sprites/${encodeURIComponent(id)}?token=${token ?? ''}`;
+
+export const farmMapUrl = (location: string) => `/api/farm/map/${encodeURIComponent(location)}/image?token=${token ?? ''}`;

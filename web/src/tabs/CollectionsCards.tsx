@@ -56,7 +56,7 @@ function PowersCard({ data, setData, onChanged }: CardProps) {
               class={`power-tile ${p.unlocked ? 'unlocked' : ''}`}
               disabled={busy || !p.editable}
               onClick={() => set(p.id, !p.unlocked)}
-              title={`${p.name}\n${p.description}${p.editable ? '' : `\n(${t('powers.notEditable')})`}`}
+              title={`${p.name}\n${p.description}${p.editable ? '' : `\n(${t('powers.notEditable')} : ${p.condition})`}`}
               aria-pressed={p.unlocked}
             >
               <img src={powerSpriteUrl(p.id)} alt="" width={32} height={32} />

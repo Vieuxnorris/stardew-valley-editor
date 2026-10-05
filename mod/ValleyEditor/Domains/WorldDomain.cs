@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Newtonsoft.Json.Linq;
@@ -129,14 +130,15 @@ internal sealed class WorldDomain : Domain
                     // one clickable spot per tooltip (an area like Town has one per building), biggest first so smaller ones sit on top
                     Areas = pair.Value.MapAreas
                         .Where(area => GameStateQuery.CheckConditions(area.Condition))
-                        .SelectMany(area => area.Tooltips
-                            .Where(t => GameStateQuery.CheckConditions(t.Condition))
+                        .SelectMany(area => AreaTooltips(area)
                             .Select(tooltip =>
                             {
                                 Rectangle hit = !tooltip.PixelArea.IsEmpty ? tooltip.PixelArea : area.PixelArea;
-                                string[] lines = (TokenParser.ParseText(tooltip.Text) ?? "")
-                                    .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                                 string? location = TooltipLocation(area, tooltip, hit);
+                                string text = TokenParser.ParseText(tooltip.Text) is { Length: > 0 } parsed
+                                    ? parsed
+                                    : Game1.getLocationFromName(location ?? "")?.DisplayName ?? "";
+                                string[] lines = text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                                 return new
                                 {
                                     Id = $"{area.Id}/{tooltip.Id}",
@@ -163,6 +165,15 @@ internal sealed class WorldDomain : Domain
     /// world position whose pixel area best overlaps the tooltip; ties favour a location named like the tooltip or
     /// area, then outdoor locations (the 'Town' tooltip covers the whole area, like every building's interior does).
     /// </summary>
+    /// <summary>An area's visible tooltips, or one covering the whole area if it has none, so every area stays clickable.</summary>
+    private static IEnumerable<WorldMapTooltipData> AreaTooltips(WorldMapAreaData area)
+    {
+        List<WorldMapTooltipData> tooltips = area.Tooltips.Where(t => GameStateQuery.CheckConditions(t.Condition)).ToList();
+        if (tooltips.Count == 0)
+            tooltips.Add(new WorldMapTooltipData { Id = area.Id, PixelArea = area.PixelArea });
+        return tooltips;
+    }
+
     private static string? TooltipLocation(WorldMapAreaData area, WorldMapTooltipData tooltip, Rectangle hit)
     {
         return area.WorldPositions
@@ -176,7 +187,8 @@ internal sealed class WorldDomain : Domain
                     .Select(n => (Name: n, Overlap: overlap));
             })
             .Select(c => (c.Name, c.Overlap, Location: Game1.getLocationFromName(c.Name)))
-            .Where(c => c.Location != null && c.Overlap > 0)
+            // no overlap still counts, ranked last: some areas (the desert) place their positions apart from their tooltips
+            .Where(c => c.Location != null)
             .OrderByDescending(c => c.Overlap)
             .ThenByDescending(c => c.Name.Equals(tooltip.Id, StringComparison.OrdinalIgnoreCase))
             .ThenByDescending(c => c.Name.Equals(area.Id, StringComparison.OrdinalIgnoreCase))
