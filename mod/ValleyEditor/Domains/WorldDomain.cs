@@ -123,12 +123,50 @@ internal sealed class WorldDomain : Domain
             return this.Write(() =>
             {
                 GameLocation location = Game1.getLocationFromName(name) ?? throw new ApiException(404, $"Unknown location '{name}'.");
-                int x = 0, y = 0;
-                Utility.getDefaultWarpLocation(location.Name, ref x, ref y);
+                var (x, y) = ArrivalTile(location);
                 Game1.warpFarmer(new LocationRequest(location.NameOrUniqueName, location.uniqueName.Value != null, location), x, y, 2);
                 return Snapshot();
             });
         });
+    }
+
+    /// <summary>
+    /// Where to land in a location: the game's default warp point when it has one, else where the doors and warps
+    /// leading here arrive (e.g. the cellar stairs), else the free tile nearest the middle of the map.
+    /// </summary>
+    private static (int X, int Y) ArrivalTile(GameLocation location)
+    {
+        bool Standable(int x, int y) => location.isTileOnMap(x, y) && location.CanSpawnCharacterHere(new Vector2(x, y));
+
+        int dx = -1, dy = -1;
+        Utility.getDefaultWarpLocation(location.Name, ref dx, ref dy);
+        if (Standable(dx, dy))
+            return (dx, dy);
+
+        Point? fromWarp = null;
+        Utility.ForEachLocation(other =>
+        {
+            Warp? warp = other.warps.FirstOrDefault(w => w.TargetName == location.NameOrUniqueName || w.TargetName == location.Name);
+            if (warp != null)
+                fromWarp = new Point(warp.TargetX, warp.TargetY);
+            return fromWarp is null;
+        });
+        if (fromWarp is { } p && location.isTileOnMap(p.X, p.Y))
+            return (p.X, p.Y);
+
+        Point size = new(location.Map.Layers[0].LayerWidth, location.Map.Layers[0].LayerHeight);
+        for (int radius = 0; radius < Math.Max(size.X, size.Y); radius++)
+        {
+            for (int x = size.X / 2 - radius; x <= size.X / 2 + radius; x++)
+            {
+                for (int y = size.Y / 2 - radius; y <= size.Y / 2 + radius; y++)
+                {
+                    if (Standable(x, y))
+                        return (x, y);
+                }
+            }
+        }
+        return (Math.Max(dx, 0), Math.Max(dy, 0));
     }
 
     private static object MapRegions()
