@@ -908,3 +908,24 @@ progress {
   grid-template-columns: minmax(0, 1fr);
 }
 
+
+.item-details fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.item-details h5 {
+  margin: 6px 0 4px;
+}
+
+.enchant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 12px;
+}
+
+.enchant-grid input[type='number'] {
+  width: 4.5em;
+  margin-right: 6px;
+}

@@ -422,3 +422,26 @@ export interface LocationView {
   chests: { id: string; name: string | null; x: number; y: number; width: number; height: number }[];
   animals: { id: string; name: string; x: number; y: number; width: number; height: number }[];
 }
+
+export interface WeaponStats {
+  minDamage: number;
+  maxDamage: number;
+  speed: number;
+  precision: number;
+  defense: number;
+  areaOfEffect: number;
+  knockback: number;
+  critChance: number;
+  critMultiplier: number;
+}
+
+export interface ItemDetails {
+  kind: 'weapon' | 'tool' | 'ring' | 'boots' | 'clothing' | 'object' | 'other';
+  object: { price: number; basePrice: number | null; edibility: number; baseEdibility: number | null; preserve: string | null; ingredient: string | null } | null;
+  weapon: (WeaponStats & { base: WeaponStats | null }) | null;
+  enchantments: { id: string; name: string; group: 'forge' | 'innate' | 'primary'; leveled: boolean; level: number; gameMaxLevel: number }[] | null;
+  tool: { current: string; levels: { id: string; name: string; upgradeLevel: number }[] | null; waterLeft: number | null; waterMax: number | null } | null;
+  ring: { combined: string[]; rings: { id: string; name: string }[] } | null;
+  boots: { defense: number; immunity: number } | null;
+  clothing: { color: string; dyeable: boolean } | null;
+}

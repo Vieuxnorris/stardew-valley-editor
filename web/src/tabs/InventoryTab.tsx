@@ -4,6 +4,7 @@ import { api, type CatalogEntry, type Inventory, type ItemStack } from '../api';
 import { FeedbackLine, ItemIcon, NumberField, QualitySelect, useAction } from '../components';
 import { useI18n } from '../i18n';
 import { ItemCatalog } from './ItemCatalog';
+import { ItemDetailsEditor } from './ItemDetailsEditor';
 
 const QUALITY_CLASS: Record<number, string> = { 1: 'silver', 2: 'gold', 4: 'iridium' };
 
@@ -135,6 +136,7 @@ function SlotEditor({ basePath, slot, item, onChanged, setContainer }: { basePat
         </button>
       </form>
       <FeedbackLine feedback={feedback} />
+      <ItemDetailsEditor basePath={basePath} slot={slot} onChanged={onChanged} setContainer={setContainer} />
     </div>
   );
 }
