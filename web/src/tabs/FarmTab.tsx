@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api, buildingSpriteUrl, farmMapUrl, type Animal, type BuildingInfo, type Farm, type FieldStats, type LocationView } from '../api';
 import { AnimalCard } from './AnimalsTab';
 import { ChestEditor } from './ChestsTab';
+import { MachinePanel } from './MachinePanel';
 import { FeedbackLine, useAction } from '../components';
 import { useI18n } from '../i18n';
 
@@ -44,12 +45,22 @@ function FieldsCard({ farm, setFarm, onChanged }: CardProps) {
       },
     );
 
-  const buttons = (location?: string) =>
-    CROP_ACTIONS.map((a) => (
+  const finishMachines = (location?: string) =>
+    run(
+      () => api<{ finished: number }>('POST', '/api/machines/finish-all', { location }),
+      (r) => setTimeout(() => setFeedback({ ok: true, text: `${r.finished} ${t('machine.finishedCount')}` })),
+    );
+
+  const buttons = (location?: string) => [
+    ...CROP_ACTIONS.map((a) => (
       <button key={a} class="secondary small" disabled={busy} onClick={() => act(a, location)}>
         {t(`farm.action.${a}`)}
       </button>
-    ));
+    )),
+    <button key="machines" class="secondary small" disabled={busy} onClick={() => finishMachines(location)}>
+      ⚙ {t('machine.finishAll')}
+    </button>,
+  ];
 
   const totals = farm.fields.reduce(
     (sum, f) => ({ crops: sum.crops + f.crops, dry: sum.dry + f.dry, ready: sum.ready + f.ready, dead: sum.dead + f.dead, youngTrees: sum.youngTrees + f.youngTrees }),
@@ -266,6 +277,7 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
                 spot(`b-${b.id}`, 'building', b.id, b.name, b.daysOfConstructionLeft > 0 ? b.footprint : b.sprite, b.daysOfConstructionLeft > 0 ? 'construction' : '', b.interior ? () => go([...path, b.interior!]) : undefined),
               )}
             {view.chests.map((c) => spot(`c-${c.id}`, 'chest', c.id, c.name ?? t('chests.fridge'), c))}
+            {view.machines.map((m) => spot(`m-${m.id}`, 'machine', m.id, `${m.name}${m.ready ? ` — ${t('machine.ready')}` : m.working ? ` — ${t('machine.working')}` : ''}`, m, m.ready ? 'ready' : m.working ? 'working' : ''))}
             {view.animals.map((a) => spot(`a-${a.id}`, 'animal', a.id, a.name, a))}
             {hover && <span class="map-label">{hover}</span>}
           </div>
@@ -287,6 +299,8 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
               onChanged={onChanged}
               onContentChanged={() => {}}
             />
+          ) : selected?.kind === 'machine' ? (
+            <MachinePanel key={selected.id} id={selected.id} onChanged={onChanged} onUpdated={() => setVersion((v) => v + 1)} />
           ) : selected?.kind === 'animal' ? (
             <AnimalPanel key={selected.id} id={selected.id} onChanged={onChanged} />
           ) : (
@@ -298,7 +312,7 @@ function BuildingsCard({ farm, setFarm, onChanged }: CardProps) {
   );
 }
 
-type Selection = { kind: 'building' | 'chest' | 'animal'; id: string };
+type Selection = { kind: 'building' | 'chest' | 'animal' | 'machine'; id: string };
 
 /** One animal's card, loaded on its own for the map's side panel. */
 function AnimalPanel({ id, onChanged }: { id: string; onChanged: () => void }) {

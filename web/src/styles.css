@@ -964,3 +964,28 @@ progress {
   font-size: 0.75rem;
   word-break: break-all;
 }
+
+.machine-area.working {
+  border: 2px dotted rgba(255, 255, 255, 0.7);
+}
+
+.machine-area.ready {
+  border: 2px solid #ffd54a;
+  box-shadow: 0 0 6px #ffd54a;
+}
+
+.machine-area:hover,
+.machine-area:focus-visible {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.species-rules {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.species-rules summary {
+  cursor: pointer;
+  font-weight: 600;
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { animalSpriteUrl, api, petSpriteUrl, type Animal, type PetInfo } from '../api';
 import { FeedbackLine, ItemIcon, useAction } from '../components';
 import { useI18n } from '../i18n';
+import { SpeciesRules } from './SpeciesRules';
 
 const MAX_FRIENDSHIP = 1000;
 const MAX_MOOD = 255;
@@ -134,9 +135,15 @@ export function AnimalCard({ animal, setAnimals, onChanged }: { animal: Animal; 
               {t('animals.grow')}
             </button>
           )}
+          {animal.isAdult && (
+            <button type="button" class="secondary" disabled={busy} onClick={() => run(() => api<Animal[]>('POST', `${path}/produce`, { quality: 4 }), setAnimals)} title={t('animals.produceHint')}>
+              🥚 {t('animals.produceNow')}
+            </button>
+          )}
         </div>
       </form>
       <FeedbackLine feedback={feedback} />
+      <SpeciesRules type={animal.type} onChanged={onChanged} />
     </li>
   );
 }

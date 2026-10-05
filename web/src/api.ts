@@ -421,6 +421,7 @@ export interface LocationView {
   parent: { location: string; displayName: string; buildingId: string } | null;
   chests: { id: string; name: string | null; x: number; y: number; width: number; height: number }[];
   animals: { id: string; name: string; x: number; y: number; width: number; height: number }[];
+  machines: { id: string; name: string; x: number; y: number; width: number; height: number; working: boolean; ready: boolean }[];
 }
 
 export interface WeaponStats {
@@ -454,4 +455,29 @@ export interface HistoryEntry {
   summary: string | null;
   undoable: boolean;
   undone: boolean;
+}
+
+export interface MachineInfo {
+  qualifiedId: string;
+  name: string;
+  output: { qualifiedId: string; name: string; stack: number; quality: number } | null;
+  input: { qualifiedId: string; name: string } | null;
+  ready: boolean;
+  working: boolean;
+  minutesUntilReady: number;
+  speed: number;
+  customSpeed: boolean;
+  globalSpeed: number;
+}
+
+export interface AnimalSpecies {
+  type: string;
+  name: string;
+  harvestType: string;
+  hasDeluxe: boolean;
+  daysToProduce: number;
+  daysToMature: number;
+  baseDaysToProduce: number;
+  baseDaysToMature: number;
+  rule: { daysToProduce: number | null; daysToMature: number | null; alwaysDeluxe: boolean } | null;
 }

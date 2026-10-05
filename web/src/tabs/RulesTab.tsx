@@ -177,7 +177,7 @@ function TreesCard({ snapshot, setSnapshot, onChanged }: CardProps) {
       >
         <RatioField label={t('rules.fruitTreeSpeed')} value={values.fruitTreeSpeed} onInput={set('fruitTreeSpeed')} min={1} max={28} step={1} />
         <RatioField label={t('rules.wildTreeGrowth')} value={values.wildTreeGrowth} onInput={set('wildTreeGrowth')} min={0} max={20} />
-        <RatioField label={t('rules.machineTime')} value={values.machineTime} onInput={set('machineTime')} min={0.01} max={10} />
+        <RatioField label={t('rules.machineTime')} value={values.machineTime} onInput={set('machineTime')} min={0} max={10} />
         <button type="submit" disabled={busy}>
           {t('common.apply')}
         </button>
