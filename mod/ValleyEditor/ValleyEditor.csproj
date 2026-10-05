@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>ValleyEditor</AssemblyName>
+    <RootNamespace>ValleyEditor</RootNamespace>
+    <Version>0.1.0</Version>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <EnableHarmony>true</EnableHarmony>
+    <!-- the web UI build is copied in by `npm run build` -->
+    <BundleExtraAssemblies>None</BundleExtraAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SMAPI ships Newtonsoft.Json; reference its copy without bundling it -->
+    <Reference Include="Newtonsoft.Json" HintPath="$(GamePath)\smapi-internal\Newtonsoft.Json.dll" Private="False" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
