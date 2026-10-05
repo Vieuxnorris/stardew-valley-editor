@@ -6,6 +6,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using ValleyEditor.Domains;
 using ValleyEditor.Server;
+using ValleyEditor.Sprites;
 
 namespace ValleyEditor;
 
@@ -30,10 +31,13 @@ internal sealed class ModEntry : Mod
         this.config = helper.ReadConfig<ModConfig>();
 
         var router = new Router();
+        var items = new ItemsDomain(this.dispatcher, this.state, helper.ModRegistry, new ItemSprites(this.dispatcher));
         Domain[] domains =
         {
             new StatusDomain(this.dispatcher, this.state, this.ModManifest),
             new PlayerDomain(this.dispatcher, this.state),
+            new InventoryDomain(this.dispatcher, this.state),
+            items,
         };
         foreach (Domain domain in domains)
             domain.Register(router);
@@ -56,6 +60,7 @@ internal sealed class ModEntry : Mod
         helper.Events.GameLoop.SaveLoaded += (_, _) =>
         {
             this.state.UnsavedChanges = false;
+            items.Invalidate();
             if (this.config.OpenBrowserOnSaveLoaded)
                 this.OpenBrowser();
         };

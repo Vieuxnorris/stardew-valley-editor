@@ -57,6 +57,9 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
 
 export const hasToken = token !== null;
 
+/** URL of an item icon; images can't send headers, so the token goes in the query. */
+export const spriteUrl = (qualifiedId: string) => `/api/sprites/${encodeURIComponent(qualifiedId)}?token=${token ?? ''}`;
+
 export interface Status {
   worldReady: boolean;
   saveName: string | null;
@@ -66,8 +69,73 @@ export interface Status {
   modVersion: string;
 }
 
+export type SkillKey = 'farming' | 'fishing' | 'foraging' | 'mining' | 'combat';
+
+export interface Skill {
+  key: SkillKey;
+  name: string;
+  level: number;
+  xp: number;
+  nextLevelXp: number | null;
+  pendingLevelUps: number;
+}
+
+export interface Profession {
+  id: number;
+  skill: SkillKey;
+  tier: 5 | 10;
+  parent: number | null;
+  name: string;
+}
+
 export interface Player {
   name: string;
   farmName: string;
   money: number;
+  qiGems: number;
+  goldenWalnuts: number;
+  health: number;
+  maxHealth: number;
+  stamina: number;
+  maxStamina: number;
+  masteryExp: number;
+  masteryLevel: number;
+  skills: Skill[];
+  professions: number[];
+  professionCatalog: Profession[];
+}
+
+export interface ItemStack {
+  qualifiedId: string;
+  name: string;
+  stack: number;
+  maxStack: number;
+  quality: number;
+  canHaveQuality: boolean;
+}
+
+export interface Inventory {
+  size: number;
+  slots: (ItemStack | null)[];
+}
+
+export interface CatalogEntry {
+  qualifiedId: string;
+  name: string;
+  internalName: string;
+  type: string;
+  category: number;
+  categoryName: string;
+  modId: string | null;
+  modName: string | null;
+}
+
+export interface CatalogPage {
+  total: number;
+  items: CatalogEntry[];
+}
+
+export interface Facets {
+  types: { id: string; count: number }[];
+  mods: { id: string; name: string | null; count: number }[];
 }

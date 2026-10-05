@@ -30,7 +30,10 @@ internal sealed class ApiException : Exception
     }
 }
 
-/// <summary>Handles one API route; the result is serialised to JSON.</summary>
+/// <summary>A handler result sent as raw bytes instead of JSON.</summary>
+internal sealed record BinaryResult(byte[] Bytes, string ContentType);
+
+/// <summary>Handles one API route; the result is serialised to JSON unless it's a <see cref="BinaryResult"/>.</summary>
 internal delegate Task<object?> ApiHandler(ApiRequest request);
 
 /// <summary>Matches requests against route templates like <c>/api/npcs/{name}</c>.</summary>

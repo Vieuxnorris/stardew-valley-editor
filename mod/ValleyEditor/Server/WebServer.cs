@@ -132,7 +132,8 @@ internal sealed class WebServer : IDisposable
             if (origin != null && origin != $"http://localhost:{this.port}" && origin != $"http://127.0.0.1:{this.port}")
                 throw new ApiException(403, "Cross-origin requests are not allowed.");
 
-            if (!TokensEqual(request.Headers["X-Editor-Token"], this.Token))
+            // images can't send headers, so <img> URLs carry the token in the query string
+            if (!TokensEqual(request.Headers["X-Editor-Token"] ?? request.QueryString["token"], this.Token))
                 throw new ApiException(401, "Missing or invalid editor token. Open the editor with the URL shown in the SMAPI console (command: editor).");
 
             var (handler, values) = this.router.Resolve(request.HttpMethod.ToUpperInvariant(), path);
@@ -143,7 +144,16 @@ internal sealed class WebServer : IDisposable
             if (await Task.WhenAny(work, Task.Delay(ApiTimeout)) != work)
                 throw new ApiException(503, "The game did not respond in time. Is a save loaded and the game running?");
 
-            await WriteJson(response, 200, await work);
+            object? result = await work;
+            if (result is BinaryResult binary)
+            {
+                response.Headers["Cache-Control"] = "private, max-age=3600";
+                response.ContentType = binary.ContentType;
+                response.ContentLength64 = binary.Bytes.Length;
+                await response.OutputStream.WriteAsync(binary.Bytes);
+            }
+            else
+                await WriteJson(response, 200, result);
         }
         catch (ApiException ex)
         {

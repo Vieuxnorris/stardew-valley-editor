@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { api, ApiError, hasToken, type Status } from './api';
 import { useI18n } from './i18n';
+import { InventoryTab } from './tabs/InventoryTab';
 import { PlayerTab } from './tabs/PlayerTab';
 
 const STATUS_POLL_MS = 2000;
 
 type Connection = { kind: 'loading' } | { kind: 'offline' } | { kind: 'unauthorized' } | { kind: 'ok'; status: Status };
 
-const TABS = ['player'] as const;
+const TABS = ['player', 'inventory'] as const;
 type Tab = (typeof TABS)[number];
 
 export function App() {
@@ -61,7 +62,10 @@ export function App() {
               </button>
             ))}
           </nav>
-          <main key={status.saveName}>{tab === 'player' && <PlayerTab onChanged={refreshStatus} />}</main>
+          <main key={status.saveName}>
+            {tab === 'player' && <PlayerTab onChanged={refreshStatus} />}
+            {tab === 'inventory' && <InventoryTab onChanged={refreshStatus} />}
+          </main>
         </>
       )}
 
