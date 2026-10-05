@@ -171,13 +171,17 @@ function TablesCard({ onChanged }: Props) {
 function TableEditor({ table, busy, save }: { table: FishTable; busy: boolean; save: (body: object) => void }) {
   const { t } = useI18n();
   const [chances, setChances] = useState(() => Object.fromEntries(table.entries.filter((e) => e.id).map((e) => [e.id!, e.chance])));
-  const [removed, setRemoved] = useState(() => new Set(table.entries.filter((e) => e.removed).map((e) => e.id!)));
+  const idSet = (pick: (e: FishTable['entries'][number]) => boolean) => new Set(table.entries.filter((e) => e.id && pick(e)).map((e) => e.id!));
+  const [removed, setRemoved] = useState(() => idSet((e) => e.removed));
+  const [unrestricted, setUnrestricted] = useState(() => idSet((e) => e.unrestricted));
+  const [priority, setPriority] = useState(() => idSet((e) => e.priority));
+  const [seasons, setSeasons] = useState(() => Object.fromEntries(table.entries.filter((e) => e.id && e.season).map((e) => [e.id!, e.season!])) as Record<string, string>);
   const [added, setAdded] = useState<LootEntry[]>(table.added);
 
   const submit = () => {
     // only send chances that differ from vanilla
     const changed = Object.fromEntries(table.entries.filter((e) => e.id && chances[e.id] !== e.baseChance).map((e) => [e.id!, chances[e.id!]]));
-    save({ chances: changed, removed: [...removed], added });
+    save({ chances: changed, removed: [...removed], unrestricted: [...unrestricted], priority: [...priority], seasons, added });
   };
 
   return (
@@ -190,6 +194,8 @@ function TableEditor({ table, busy, save }: { table: FishTable; busy: boolean; s
               <th>{t('world.season')}</th>
               <th>{t('fish.base')}</th>
               <th>{t('loot.chance')}</th>
+              <th title={t('fish.unrestrictedHint')}>{t('fish.unrestricted')}</th>
+              <th title={t('fish.priorityHint')}>{t('fish.priority')}</th>
               <th>{t('fish.removed')}</th>
             </tr>
           </thead>
@@ -200,7 +206,33 @@ function TableEditor({ table, busy, save }: { table: FishTable; busy: boolean; s
                   {entry.itemId?.startsWith('(') && <ItemIcon qualifiedId={entry.itemId} name={entry.name} size={24} />} {entry.name}
                   {entry.isBossFish && <span class="badge">{t('fish.boss')}</span>}
                 </td>
-                <td>{entry.season ? t(`season.${entry.season}`) : '—'}</td>
+                <td>
+                  {entry.id ? (
+                    <select
+                      value={seasons[entry.id] ?? ''}
+                      onChange={(e) => {
+                        const value = (e.target as HTMLSelectElement).value;
+                        const next = { ...seasons };
+                        if (value) next[entry.id!] = value;
+                        else delete next[entry.id!];
+                        setSeasons(next);
+                      }}
+                      aria-label={`${entry.name} ${t('world.season')}`}
+                    >
+                      <option value="">
+                        {t('fish.vanillaSeason')} ({entry.baseSeason ? t(`season.${entry.baseSeason}`) : t('fish.anySeason')})
+                      </option>
+                      <option value="any">{t('fish.anySeason')}</option>
+                      {(['spring', 'summer', 'fall', 'winter'] as const).map((s) => (
+                        <option key={s} value={s}>
+                          {t(`season.${s}`)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 <td>{Math.round(entry.baseChance * 1000) / 10}</td>
                 <td>
                   {entry.id ? (
@@ -217,6 +249,8 @@ function TableEditor({ table, busy, save }: { table: FishTable; busy: boolean; s
                     '—'
                   )}
                 </td>
+                <td>{entry.id && <SetToggle set={unrestricted} setSet={setUnrestricted} id={entry.id} label={`${t('fish.unrestricted')} ${entry.name}`} />}</td>
+                <td>{entry.id && <SetToggle set={priority} setSet={setPriority} id={entry.id} label={`${t('fish.priority')} ${entry.name}`} />}</td>
                 <td>
                   {entry.id && (
                     <input
@@ -312,5 +346,22 @@ function CollectionRow({ fish, busy, save }: { fish: FishingSnapshot['fish'][num
         {fish.maxSize !== null && <span class="muted"> / {fish.maxSize}</span>}
       </td>
     </tr>
+  );
+}
+
+/** A checkbox that adds or removes an ID from a set. */
+function SetToggle({ set, setSet, id, label }: { set: Set<string>; setSet: (s: Set<string>) => void; id: string; label: string }) {
+  return (
+    <input
+      type="checkbox"
+      checked={set.has(id)}
+      onChange={(e) => {
+        const next = new Set(set);
+        if ((e.target as HTMLInputElement).checked) next.add(id);
+        else next.delete(id);
+        setSet(next);
+      }}
+      aria-label={label}
+    />
   );
 }

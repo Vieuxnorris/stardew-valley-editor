@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
-using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Menus;
 using StardewValley.Tools;
@@ -24,8 +23,9 @@ internal sealed class FishingService
     public FishingService(IModHelper helper, Harmony harmony, IMonitor log)
     {
         monitor = log;
-        helper.Events.Display.MenuChanged += OnMenuChanged;
-
+        harmony.Patch(
+            AccessTools.Method(typeof(FishingRod), nameof(FishingRod.openTreasureMenuEndFunction)),
+            postfix: new HarmonyMethod(typeof(FishingService), nameof(AfterOpenTreasureMenu)));
         harmony.Patch(
             AccessTools.Method(typeof(FishingRod), nameof(FishingRod.pullFishFromWater)),
             prefix: new HarmonyMethod(typeof(FishingService), nameof(BeforePullFishFromWater)));
@@ -75,11 +75,14 @@ internal sealed class FishingService
             __result = fish;
     }
 
-    /// <summary>Fill the fishing treasure chest as it opens.</summary>
-    private static void OnMenuChanged(object? sender, MenuChangedEventArgs e)
+    /// <summary>Fill the fishing treasure chest right after the game opens it (FishingRod.openTreasureMenuEndFunction ends by setting the menu).</summary>
+    private static void AfterOpenTreasureMenu()
     {
-        if (e.NewMenu is not ItemGrabMenu { source: FishingChestSource } menu)
+        if (Game1.activeClickableMenu is not ItemGrabMenu { source: FishingChestSource } menu)
+        {
+            monitor?.Log("Treasure chest rules: the fishing chest menu wasn't open after openTreasureMenuEndFunction.", LogLevel.Trace);
             return;
+        }
         RulesData rules = RulesService.Current;
         if (rules.TreasureMultiplier <= 1 && rules.TreasureLoot.Count == 0)
             return;
@@ -110,6 +113,7 @@ internal sealed class FishingService
                         item.Stack = (int)Math.Min(item.maximumStackSize(), (long)item.Stack * rules.TreasureMultiplier);
                 }
             }
+            monitor?.Log($"Treasure chest rules applied: ×{rules.TreasureMultiplier}, {rules.TreasureLoot.Count} table entries, {items.Count} items now.", LogLevel.Trace);
         }
         catch (Exception ex)
         {

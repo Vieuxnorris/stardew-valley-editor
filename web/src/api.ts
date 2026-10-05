@@ -259,7 +259,12 @@ export interface FishTable {
     baseChance: number;
     chance: number;
     removed: boolean;
-    season: Season | null;
+    baseSeason: Season | null;
+    /** Season override: a season, 'any', or null for the vanilla season. */
+    season: Season | 'any' | null;
+    unrestricted: boolean;
+    priority: boolean;
+    catchLimit: number;
     condition: string | null;
     isBossFish: boolean;
   }[];

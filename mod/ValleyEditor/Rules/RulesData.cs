@@ -31,7 +31,17 @@ internal sealed class FishTableEdit
     /// <summary>Fish added to the table; they're rolled before vanilla entries and ignore season/time requirements.</summary>
     public List<LootEntry> Added { get; set; } = new();
 
-    public bool IsEmpty => this.Chances.Count == 0 && this.Removed.Count == 0 && this.Added.Count == 0;
+    /// <summary>Season overrides by entry ID: a season name, or "any" to allow every season.</summary>
+    public Dictionary<string, string> Seasons { get; set; } = new();
+
+    /// <summary>Entry IDs freed from their condition, Data/Fish time and weather requirements, and catch limit.</summary>
+    public HashSet<string> Unrestricted { get; set; } = new();
+
+    /// <summary>Entry IDs rolled before the other entries, so their chance is what they actually get.</summary>
+    public HashSet<string> Priority { get; set; } = new();
+
+    public bool IsEmpty => this.Chances.Count == 0 && this.Removed.Count == 0 && this.Added.Count == 0
+        && this.Seasons.Count == 0 && this.Unrestricted.Count == 0 && this.Priority.Count == 0;
 }
 
 /// <summary>Game rule overrides for one save, stored in the save file through SMAPI. All defaults are vanilla.</summary>

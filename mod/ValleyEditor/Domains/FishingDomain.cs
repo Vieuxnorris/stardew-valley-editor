@@ -86,7 +86,21 @@ internal sealed class FishingDomain : Domain
                 }
             }
             if (body["removed"] is JArray removed)
-                edit.Removed = removed.Select(r => r.Value<string>()).Where(r => !string.IsNullOrEmpty(r)).ToHashSet()!;
+                edit.Removed = IdSet(removed);
+            if (body["unrestricted"] is JArray unrestricted)
+                edit.Unrestricted = IdSet(unrestricted);
+            if (body["priority"] is JArray priority)
+                edit.Priority = IdSet(priority);
+            if (body["seasons"] is JObject seasons)
+            {
+                foreach (var (id, value) in seasons)
+                {
+                    string season = value?.Value<string>()?.ToLowerInvariant() ?? "";
+                    edit.Seasons[id] = season is "any" or "spring" or "summer" or "fall" or "winter"
+                        ? season
+                        : throw new ApiException(400, "Seasons must be any, spring, summer, fall or winter.");
+                }
+            }
             if (body["added"] != null)
                 edit.Added = LootJson.Parse(body["added"], "added");
 
@@ -195,7 +209,11 @@ internal sealed class FishingDomain : Domain
                         BaseChance = fish.Chance,
                         Chance = fish.Id != null && edit?.Chances.TryGetValue(fish.Id, out float c) == true ? c : fish.Chance,
                         Removed = fish.Id != null && edit?.Removed.Contains(fish.Id) == true,
-                        Season = fish.Season?.ToString().ToLowerInvariant(),
+                        BaseSeason = fish.Season?.ToString().ToLowerInvariant(),
+                        Season = fish.Id != null && edit?.Seasons.TryGetValue(fish.Id, out string? season) == true ? season : null,
+                        Unrestricted = fish.Id != null && edit?.Unrestricted.Contains(fish.Id) == true,
+                        Priority = fish.Id != null && edit?.Priority.Contains(fish.Id) == true,
+                        fish.CatchLimit,
                         fish.Condition,
                         fish.IsBossFish,
                     }),
@@ -210,6 +228,8 @@ internal sealed class FishingDomain : Domain
     {
         return string.IsNullOrEmpty(data.DisplayName) ? null : StardewValley.TokenizableStrings.TokenParser.ParseText(data.DisplayName);
     }
+
+    private static HashSet<string> IdSet(JArray ids) => ids.Select(id => id.Value<string>()).Where(id => !string.IsNullOrEmpty(id)).ToHashSet()!;
 
     private static bool? OptBool(JObject body, string name)
     {

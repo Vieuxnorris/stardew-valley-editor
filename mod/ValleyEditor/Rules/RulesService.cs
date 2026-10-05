@@ -165,15 +165,27 @@ internal sealed class RulesService
             if (location.Fish is not { Count: > 0 } && !Current.FishTables.ContainsKey(name))
                 continue;
             location.Fish ??= new List<SpawnFishData>();
-            this.FishBaselines[name] = location.Fish.Select(f => new SpawnFishData { Id = f.Id, ItemId = f.ItemId, RandomItemId = f.RandomItemId, Chance = f.Chance, Season = f.Season, Condition = f.Condition, IsBossFish = f.IsBossFish }).ToList();
+            this.FishBaselines[name] = location.Fish.Select(f => new SpawnFishData { Id = f.Id, ItemId = f.ItemId, RandomItemId = f.RandomItemId, Chance = f.Chance, Season = f.Season, Condition = f.Condition, IsBossFish = f.IsBossFish, Precedence = f.Precedence, CatchLimit = f.CatchLimit }).ToList();
 
             if (!Current.FishTables.TryGetValue(name, out FishTableEdit? edit))
                 continue;
             location.Fish.RemoveAll(f => f.Id != null && edit.Removed.Contains(f.Id));
             foreach (SpawnFishData fish in location.Fish)
             {
-                if (fish.Id != null && edit.Chances.TryGetValue(fish.Id, out float chance))
+                if (fish.Id is null)
+                    continue;
+                if (edit.Chances.TryGetValue(fish.Id, out float chance))
                     fish.Chance = chance;
+                if (edit.Seasons.TryGetValue(fish.Id, out string? season))
+                    fish.Season = Enum.TryParse(season, ignoreCase: true, out Season parsed) ? parsed : null; // "any" → no season limit
+                if (edit.Unrestricted.Contains(fish.Id))
+                {
+                    fish.Condition = null;
+                    fish.IgnoreFishDataRequirements = true;
+                    fish.CatchLimit = -1;
+                }
+                if (edit.Priority.Contains(fish.Id))
+                    fish.Precedence = -50;
             }
             for (int i = 0; i < edit.Added.Count; i++)
             {
