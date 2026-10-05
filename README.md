@@ -11,6 +11,29 @@ hacking.
 
 *[Version française plus bas.](#en-français)*
 
+| The farm, live and clickable | Teleport from the world map |
+|---|---|
+| ![Farm map: buildings, exits, machines and animals are clickable](docs/screenshots/farm-map.png) | ![World tab: date, weather and the clickable world map](docs/screenshots/world.png) |
+| **Every item, with icons** | **Per-save rules and OP mode** |
+| ![Inventory: backpack grid and the item catalog](docs/screenshots/inventory.png) | ![Rules tab: OP mode and crop growth](docs/screenshots/rules.png) |
+
+<details>
+<summary>More screenshots (player, relationships, animals, progression, fishing, monsters, chests)</summary>
+
+![Player tab](docs/screenshots/player.png)
+![Relationships tab](docs/screenshots/npcs.png)
+![Animals tab: pets, farm animals and species rules](docs/screenshots/animals.png)
+![Progression tab: collections and special items](docs/screenshots/progression.png)
+![Fishing tab](docs/screenshots/fishing.png)
+![Monsters tab](docs/screenshots/monsters.png)
+![Chests tab](docs/screenshots/chests.png)
+![Farm tab: crops and trees per location](docs/screenshots/farm.png)
+
+</details>
+
+*The editor runs in English here. Game names (items, places, skills) come from the game itself, which was in
+French for these captures.*
+
 ---
 
 ## Contents
