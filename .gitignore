@@ -1,0 +1,14 @@
+# build
+bin/
+obj/
+*.user
+.vs/
+# web
+web/node_modules/
+web/dist/
+mod/ValleyEditor/wwwroot/
+# never commit game files, decompiled code or saves
+*.xnb
+stardew-decomp/
+Saves/
+*.zip
