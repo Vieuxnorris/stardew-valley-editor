@@ -114,6 +114,8 @@ internal sealed class CheatsService
             Game1.gameTimeInterval = 0;
         if (rules.InstantBuild && e.IsMultipleOf(15) && Game1.activeClickableMenu == null)
             FinishConstructions(player);
+        if (e.IsMultipleOf(30) && (rules.MachineTime <= 0 || rules.MachineTimeOverrides.Values.Any(v => v <= 0)))
+            FinishInstantMachines(rules);
 
         try
         {
@@ -227,6 +229,20 @@ internal sealed class CheatsService
         // the farmhouse is rebuilt overnight (furniture moved, new map): enlarging it under the player's feet isn't safe
         if (player.daysUntilHouseUpgrade.Value > 1)
             player.daysUntilHouseUpgrade.Value = 1;
+    }
+
+    /// <summary>Machines set to instant (time multiplier 0) are made ready as soon as they start.</summary>
+    private static void FinishInstantMachines(RulesData rules)
+    {
+        Utility.ForEachLocation(location =>
+        {
+            foreach (SObject obj in location.objects.Values)
+            {
+                if (MachineTools.IsWorking(obj) && MachineTools.IsMachine(obj) && rules.MachineTimeFor(obj.QualifiedItemId) <= 0)
+                    MachineTools.Finish(obj);
+            }
+            return true;
+        });
     }
 
     private static bool BeforeHasResourcesToBuild(ref bool __result)

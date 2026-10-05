@@ -58,7 +58,7 @@ internal sealed class RulesDomain : Domain
             double? cropGrowth = OptDouble(body, "cropGrowth", 0.05, 10);
             int? fruitTreeSpeed = OptInt(body, "fruitTreeSpeed", 1, 28);
             double? wildTreeGrowth = OptDouble(body, "wildTreeGrowth", 0, 20);
-            double? machineTime = OptDouble(body, "machineTime", 0.01, 10);
+            double? machineTime = OptDouble(body, "machineTime", 0, 10);
             double? mineStones = OptDouble(body, "mineStones", 0, 5);
             double? mineMonsters = OptDouble(body, "mineMonsters", 0, 10);
             double? mineGems = OptDouble(body, "mineGems", 0, 20);

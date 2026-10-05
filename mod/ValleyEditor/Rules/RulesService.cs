@@ -6,6 +6,7 @@ using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.GameData.Crops;
 using StardewValley.GameData.Locations;
+using StardewValley.GameData.FarmAnimals;
 using StardewValley.GameData.Machines;
 using StardewValley.GameData.WildTrees;
 using StardewValley.Objects;
@@ -20,7 +21,7 @@ internal sealed record CropBaseline(List<int> Phases, int RegrowDays, string Har
 internal sealed class RulesService
 {
     private const string SaveKey = "rules";
-    private static readonly string[] EditedAssets = { "Data/Crops", "Data/Machines", "Data/WildTrees", "Data/Locations", "Data/Monsters" };
+    private static readonly string[] EditedAssets = { "Data/Crops", "Data/Machines", "Data/WildTrees", "Data/Locations", "Data/Monsters", "Data/FarmAnimals" };
 
     private readonly IModHelper helper;
 
@@ -35,6 +36,9 @@ internal sealed class RulesService
 
     /// <summary>The Data/Monsters entries as other mods left them, captured each time it's edited.</summary>
     public Dictionary<string, string> MonsterBaselines { get; } = new();
+
+    /// <summary>Data/FarmAnimals values before the rules applied, by species.</summary>
+    public Dictionary<string, (int DaysToProduce, int DaysToMature)> AnimalBaselines { get; } = new();
 
     public RulesService(IModHelper helper)
     {
@@ -110,6 +114,8 @@ internal sealed class RulesService
             e.Edit(asset => EditWildTrees(asset.AsDictionary<string, WildTreeData>().Data), AssetEditPriority.Late);
         else if (e.NameWithoutLocale.IsEquivalentTo("Data/Locations"))
             e.Edit(asset => this.EditFishTables(asset.AsDictionary<string, LocationData>().Data), AssetEditPriority.Late);
+        else if (e.NameWithoutLocale.IsEquivalentTo("Data/FarmAnimals"))
+            e.Edit(asset => this.EditFarmAnimals(asset.AsDictionary<string, FarmAnimalData>().Data), AssetEditPriority.Late);
         else if (e.NameWithoutLocale.IsEquivalentTo("Data/Monsters"))
             e.Edit(asset => this.EditMonsterDrops(asset.AsDictionary<string, string>().Data), AssetEditPriority.Late);
     }
@@ -132,16 +138,45 @@ internal sealed class RulesService
 
     private static void EditMachines(IDictionary<string, MachineData> machines)
     {
-        double multiplier = Current.MachineTime;
-        if (Math.Abs(multiplier - 1) < 1e-9)
-            return;
-
-        foreach (MachineData machine in machines.Values)
+        foreach ((string machineId, MachineData machine) in machines)
         {
+            double multiplier = Current.MachineTimeFor(machineId);
+            if (Math.Abs(multiplier - 1) < 1e-9)
+                continue;
             foreach (MachineOutputRule rule in machine.OutputRules ?? Enumerable.Empty<MachineOutputRule>())
             {
+                if (multiplier <= 0)
+                {
+                    // instant: the shortest timer the clock allows; CheatsService then finishes it on the spot
+                    rule.MinutesUntilReady = 10;
+                    rule.DaysUntilReady = -1;
+                    continue;
+                }
                 rule.MinutesUntilReady = RuleMath.ScaleMinutes(rule.MinutesUntilReady, multiplier);
                 rule.DaysUntilReady = RuleMath.ScaleDays(rule.DaysUntilReady, multiplier);
+            }
+        }
+    }
+
+    private void EditFarmAnimals(IDictionary<string, FarmAnimalData> animals)
+    {
+        this.AnimalBaselines.Clear();
+        foreach ((string type, FarmAnimalData data) in animals)
+            this.AnimalBaselines[type] = (data.DaysToProduce, data.DaysToMature);
+
+        foreach ((string type, AnimalRule rule) in Current.AnimalRules)
+        {
+            if (!animals.TryGetValue(type, out FarmAnimalData? data))
+                continue;
+            if (rule.DaysToProduce is int produce)
+                data.DaysToProduce = produce;
+            if (rule.DaysToMature is int mature)
+                data.DaysToMature = mature;
+            if (rule.AlwaysDeluxe && data.DeluxeProduceItemIds?.Count > 0)
+            {
+                // FarmAnimal.dayUpdate: deluxe if friendship >= minimum and random < (friendship + mood) / divisor
+                data.DeluxeProduceMinimumFriendship = 0;
+                data.DeluxeProduceCareDivisor = 0.001f;
             }
         }
     }

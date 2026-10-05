@@ -62,6 +62,15 @@ internal sealed class RulesData
     /// <summary>Machine processing time multiplier; 0.5 means twice as fast.</summary>
     public double MachineTime { get; set; } = 1;
 
+    /// <summary>Per-machine time multipliers, by qualified machine ID (e.g. "(BC)12" for the keg); 0 means instant.</summary>
+    public Dictionary<string, double> MachineTimeOverrides { get; set; } = new();
+
+    /// <summary>Per-species farm animal settings, by Data/FarmAnimals key (e.g. "White Chicken").</summary>
+    public Dictionary<string, AnimalRule> AnimalRules { get; set; } = new();
+
+    /// <summary>The time multiplier for a machine: its override, else the global one.</summary>
+    public double MachineTimeFor(string qualifiedMachineId) => this.MachineTimeOverrides.TryGetValue(qualifiedMachineId, out double value) ? value : this.MachineTime;
+
     /// <summary>Ore multiplier per mine band, keyed by <see cref="MineBands"/>.</summary>
     public Dictionary<string, double> MineOre { get; set; } = new();
 
@@ -177,4 +186,17 @@ internal sealed class RulesData
     };
 
     public double OreMultiplier(int level) => this.MineOre.TryGetValue(BandForLevel(level), out double value) ? value : 1;
+}
+
+/// <summary>Overrides for one farm animal species (Data/FarmAnimals); null keeps the game's value.</summary>
+internal sealed class AnimalRule
+{
+    /// <summary>Days between two produce (1 = every day).</summary>
+    public int? DaysToProduce { get; set; }
+
+    /// <summary>Days for a baby to grow up.</summary>
+    public int? DaysToMature { get; set; }
+
+    /// <summary>Always give the deluxe produce (large eggs, large milk...) when the species has one.</summary>
+    public bool AlwaysDeluxe { get; set; }
 }

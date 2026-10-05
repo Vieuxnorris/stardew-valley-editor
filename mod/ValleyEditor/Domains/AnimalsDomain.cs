@@ -9,6 +9,7 @@ using StardewValley.Buildings;
 using StardewValley.Characters;
 using StardewValley.GameData.FarmAnimals;
 using StardewValley.TokenizableStrings;
+using ValleyEditor.Rules;
 using ValleyEditor.Server;
 using ValleyEditor.Sprites;
 
@@ -22,11 +23,13 @@ internal sealed class AnimalsDomain : Domain
     private const int MaxMood = 255;
 
     private readonly ItemSprites sprites;
+    private readonly RulesService rules;
 
-    public AnimalsDomain(GameThreadDispatcher game, EditorState state, ItemSprites sprites)
+    public AnimalsDomain(GameThreadDispatcher game, EditorState state, ItemSprites sprites, RulesService rules)
         : base(game, state)
     {
         this.sprites = sprites;
+        this.rules = rules;
     }
 
     public override void Register(Router router)
@@ -97,6 +100,54 @@ internal sealed class AnimalsDomain : Domain
         router.Get("/api/animal-sprites/{id}", async request =>
             new BinaryResult(await this.sprites.RenderPng(() => ItemSprites.AnimalPixels(Find(request.Params["id"]))), "image/png"));
 
+        // produce right away: egg-type produce goes to the backpack, milk/wool becomes ready to collect
+        router.Post("/api/animals/{id}/produce", request =>
+        {
+            int quality = OptInt(request.Body as JObject ?? new JObject(), "quality", 0, 4) ?? 0;
+            return this.Write(() =>
+            {
+                FarmAnimal animal = Find(request.Params["id"]);
+                FarmAnimalData data = animal.GetAnimalData() ?? throw new ApiException(409, "This animal has no data.");
+                string produce = animal.GetProduceID(Game1.random) ?? throw new ApiException(409, "This animal has nothing to produce (too young?).");
+                if (data.HarvestType == FarmAnimalHarvestType.DropOvernight)
+                {
+                    Item item = ItemRegistry.Create(produce, 1, quality);
+                    if (!Game1.player.addItemToInventoryBool(item))
+                        Game1.createItemDebris(item, Game1.player.getStandingPosition(), Game1.player.FacingDirection);
+                }
+                else
+                {
+                    animal.currentProduce.Value = produce;
+                    animal.produceQuality.Value = quality;
+                }
+                return Snapshot();
+            });
+        });
+
+        // per-species settings (Data/FarmAnimals), shared by every animal of that type
+        router.Get("/api/animals/types/{type}", request => this.Read(() => this.TypeSnapshot(request.Params["type"])));
+        router.Put("/api/animals/types/{type}", request =>
+        {
+            JObject body = request.BodyObject;
+            int? produce = OptInt(body, "daysToProduce", 1, 1000);
+            int? mature = OptInt(body, "daysToMature", 0, 1000);
+            bool deluxe = body.Value<bool?>("alwaysDeluxe") ?? false;
+            string type = request.Params["type"];
+            return this.Write(() =>
+            {
+                if (!DataLoader.FarmAnimals(Game1.content).ContainsKey(type))
+                    throw new ApiException(404, $"No animal species '{type}'.");
+                this.rules.Update(r =>
+                {
+                    if (produce is null && mature is null && !deluxe)
+                        r.AnimalRules.Remove(type);
+                    else
+                        r.AnimalRules[type] = new AnimalRule { DaysToProduce = produce, DaysToMature = mature, AlwaysDeluxe = deluxe };
+                });
+                return this.TypeSnapshot(type);
+            });
+        });
+
         // pets (cat, dog, turtle...): an NPC subclass, not a FarmAnimal
         router.Get("/api/pets", _ => this.Read(PetsSnapshot));
 
@@ -140,6 +191,27 @@ internal sealed class AnimalsDomain : Domain
             FindPet(request.Params["id"]).GetPetIcon(out string asset, out Rectangle source);
             return ItemSprites.ReadPixels(Game1.content.Load<Texture2D>(asset), source);
         }), "image/png"));
+    }
+
+    private object TypeSnapshot(string type)
+    {
+        FarmAnimalData data = DataLoader.FarmAnimals(Game1.content).TryGetValue(type, out FarmAnimalData? found)
+            ? found
+            : throw new ApiException(404, $"No animal species '{type}'.");
+        bool hasBase = this.rules.AnimalBaselines.TryGetValue(type, out var baseline);
+        RulesService.Current.AnimalRules.TryGetValue(type, out AnimalRule? rule);
+        return new
+        {
+            Type = type,
+            Name = TokenParser.ParseText(data.DisplayName) ?? type,
+            HarvestType = data.HarvestType.ToString(),
+            HasDeluxe = data.DeluxeProduceItemIds?.Count > 0,
+            data.DaysToProduce,
+            data.DaysToMature,
+            BaseDaysToProduce = hasBase ? baseline.DaysToProduce : data.DaysToProduce,
+            BaseDaysToMature = hasBase ? baseline.DaysToMature : data.DaysToMature,
+            Rule = rule,
+        };
     }
 
     private static List<Pet> AllPets()

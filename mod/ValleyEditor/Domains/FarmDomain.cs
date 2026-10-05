@@ -238,6 +238,24 @@ internal sealed class FarmDomain : Domain
             Height = size.Y,
             Parent = parent.Building is null ? null : new { Location = parent.Location.NameOrUniqueName, DisplayName = parent.Location.DisplayName ?? parent.Location.Name, BuildingId = parent.Id },
             Chests = chests,
+            Machines = location.objects.Pairs
+                .Where(p => Rules.MachineTools.IsMachine(p.Value))
+                .Select(p =>
+                {
+                    int height = p.Value.bigCraftable.Value ? tile * 2 : tile;
+                    return new
+                    {
+                        Id = $"{name}@{(int)p.Key.X},{(int)p.Key.Y}",
+                        Name = p.Value.DisplayName,
+                        X = (int)p.Key.X * tile,
+                        Y = (int)p.Key.Y * tile + tile - height,
+                        Width = tile,
+                        Height = height,
+                        Working = Rules.MachineTools.IsWorking(p.Value),
+                        Ready = p.Value.readyForHarvest.Value,
+                    };
+                })
+                .ToArray(),
             Animals = location.animals.Values
                 .Select(a =>
                 {
